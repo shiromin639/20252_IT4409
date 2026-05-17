@@ -9,8 +9,8 @@ from sqlmodel import (
     Field,
     ForeignKey,
     Integer,
-    Numeric,
     Relationship,
+    Numeric,
     SQLModel,
     text,
 )
