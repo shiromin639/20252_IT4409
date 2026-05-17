@@ -1,16 +1,17 @@
 const mongoose = require('mongoose');
 
 const InventorySchema = new mongoose.Schema({
-    productId: { 
-        type: String, 
+    productId: {
+        type: String,
         required: true,
-        unique: true // Mỗi sản phẩm chỉ có 1 bản ghi kho
+        unique: true,
+        trim: true
     },
-    stock: { 
-        type: Number, 
+    stock: {
+        type: Number,
         required: true,
         default: 0,
-        min: 0 // Số lượng tồn kho không thể âm
+        min: 0
     }
 }, { timestamps: true });
 

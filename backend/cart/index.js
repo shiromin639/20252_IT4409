@@ -4,19 +4,31 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : true;
+
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: allowedOrigins }));
+
+app.get('/health', (req, res) => {
+    res.json({ service: 'cart', status: 'ok' });
+});
+
+if (!process.env.MONGO_URI) {
+    console.error('MONGO_URI is not configured for Cart Service');
+    process.exit(1);
+}
 
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ Đã kết nối MongoDB cho Cart Service'))
-    .catch((err) => console.error('❌ Lỗi kết nối DB:', err));
+    .then(() => console.log('MongoDB connected for Cart Service'))
+    .catch((err) => console.error('Cart Service database connection error:', err));
 
-// --- DÒNG NÀY ĐỂ KẾT NỐI ROUTER ---
-const cartRoute = require('./routes/cart'); 
-app.use('/api/cart', cartRoute); // Mọi request bắt đầu bằng /api/cart sẽ chui vào file cart.js xử lý
-// -----------------------------------------
+const cartRoute = require('./routes/cart');
+app.use('/api/cart', cartRoute);
 
 const PORT = process.env.PORT || 3003;
 app.listen(PORT, () => {
-    console.log(`Cart Service đang chạy tại cổng ${PORT}`);
+    console.log(`Cart Service is running on port ${PORT}`);
 });

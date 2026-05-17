@@ -4,15 +4,22 @@ const mongoose = require('mongoose');
 const authRoutes = require('./routes/auth');
 
 const app = express();
-app.use(express.json()); // server đọc được dữ liệu JSON gửi lên
+app.use(express.json());
 
-// Kết nối MongoDB
+app.get('/health', (req, res) => {
+    res.json({ service: 'user', status: 'ok' });
+});
+
+if (!process.env.MONGO_URI) {
+    console.error('MONGO_URI is not configured for User Service');
+    process.exit(1);
+}
+
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("Kết nối MongoDB thành công"))
-    .catch(err => console.error("Lỗi kết nối MongoDB:", err));
+    .then(() => console.log('MongoDB connected for User Service'))
+    .catch(err => console.error('User Service database connection error:', err));
 
-// Sử dụng Routes
 app.use('/api/users', authRoutes);
 
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server chạy tại port ${PORT}`));
+app.listen(PORT, () => console.log(`User Service is running on port ${PORT}`));
