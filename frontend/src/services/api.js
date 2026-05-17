@@ -28,7 +28,7 @@ api.interceptors.response.use(
 )
 
 // Mock API functions using local data
-import { laptops, mockOrders } from '../data/laptops'
+import { laptops, usedLaptops, mockOrders } from '../data/laptops'
 
 export const productService = {
   getAll: async (filters = {}) => {
@@ -124,6 +124,31 @@ export const orderService = {
   getMyOrders: async () => {
     await delay(400)
     return mockOrders
+  },
+}
+
+export const usedProductService = {
+  getAll: async () => {
+    await delay(300)
+    return usedLaptops
+  },
+
+  getById: async (id) => {
+    await delay(200)
+    const laptop = usedLaptops.find(l => l.id === parseInt(id))
+    if (!laptop) throw new Error('Không tìm thấy sản phẩm')
+    return laptop
+  },
+
+  getFeatured: async () => {
+    await delay(200)
+    return usedLaptops.filter(l => l.isFlashSale).slice(0, 8)
+  },
+
+  getHotDeals: async () => {
+    await delay(200)
+    // Lấy những máy cũ có giảm giá cao
+    return usedLaptops.filter(l => l.discount > 30).slice(0, 6)
   },
 }
 
