@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, ChevronLeft, ChevronRight, Zap, Shield, Truck, HeadphonesIcon, Star } from 'lucide-react'
-import { productService } from '../../services/api'
+import { ArrowRight, ChevronLeft, ChevronRight, Zap, Shield, Truck, HeadphonesIcon, Star, Clock } from 'lucide-react'
+import { productService, usedProductService } from '../../services/api'
 import { brands, banners } from '../../data/laptops'
 import ProductCard from '../../components/product/ProductCard'
 import { SkeletonCard } from '../../components/common'
@@ -12,6 +12,7 @@ export default function HomePage() {
   const [featured, setFeatured] = useState([])
   const [newProducts, setNewProducts] = useState([])
   const [flashSale, setFlashSale] = useState([])
+  const [usedProducts, setUsedProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentBanner, setCurrentBanner] = useState(0)
   const [flashTime, setFlashTime] = useState({ h: 5, m: 42, s: 17 })
@@ -20,14 +21,16 @@ export default function HomePage() {
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [f, n, fs] = await Promise.all([
+      const [f, n, fs, u] = await Promise.all([
         productService.getFeatured(),
         productService.getNew(),
         productService.getFlashSale(),
+        usedProductService.getHotDeals(),
       ])
       setFeatured(f)
       setNewProducts(n)
       setFlashSale(fs)
+      setUsedProducts(u)
       setLoading(false)
     }
     fetchAll()
@@ -256,6 +259,42 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── USED LAPTOPS / MÁYLAPTOP CŨ ── */}
+      {usedProducts.length > 0 && (
+        <section className={`section-sm ${styles.usedSection}`}>
+          <div className="container">
+            <div className="section-header">
+              <div>
+                <h2 className="section-title">💰 Máy Cũ - Giá Sốc</h2>
+                <p className="section-subtitle">Laptop cũ chất lượng giảm tới 40%, bảo hành 3-6 tháng</p>
+              </div>
+              <Link to="/products?type=used" className="section-link">
+                Xem tất cả <ArrowRight size={14} />
+              </Link>
+            </div>
+            <div className="product-grid">
+              {usedProducts.map((p, i) => (
+                <div key={p.id} className={styles.usedCard}>
+                  <ProductCard product={p} index={i} />
+                  <div className={styles.usedBadge}>
+                    <Clock size={14} />
+                    <span>{p.usageTime} sử dụng</span>
+                  </div>
+                  <div className={styles.conditionBadge} data-condition={p.condition}>
+                    {p.condition === 'excellent' && '⭐ Hoàn hảo'}
+                    {p.condition === 'good' && '✅ Tốt'}
+                    {p.condition === 'fair' && '⚠️ Bình thường'}
+                  </div>
+                  <div className={styles.warrantyBadge}>
+                    🛡️ Bảo hành {p.warranty}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   )
 }
