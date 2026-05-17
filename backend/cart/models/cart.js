@@ -1,18 +1,20 @@
 const mongoose = require('mongoose');
 
 const CartSchema = new mongoose.Schema({
-    userId: { 
-        type: String, 
+    userId: {
+        type: String,
         required: true,
-        unique: true // Mỗi user chỉ có 1 giỏ hàng active
+        unique: true,
+        trim: true
     },
     items: [{
-        productId: { 
-            type: String, 
-            required: true 
+        productId: {
+            type: String,
+            required: true,
+            trim: true
         },
-        quantity: { 
-            type: Number, 
+        quantity: {
+            type: Number,
             default: 1,
             min: 1
         }
