@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { products } from '../../data';
 import ProductCard from '../common/ProductCard';
 
@@ -17,9 +18,9 @@ const FlashSale = () => {
               <span className="bg-black text-white text-xs font-bold px-2 py-1 rounded">30</span>
             </div>
           </div>
-          <a href="#" className="text-sm text-red-600 hover:underline font-medium">
-            Xem tất cả deal &gt;
-          </a>
+        <Link to="/products" className="text-sm text-red-600 hover:underline font-medium">
+          Xem tất cả deal &gt;
+        </Link>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -29,6 +30,7 @@ const FlashSale = () => {
                 -15%
               </div>
               <ProductCard
+                id={product.id}
                 title={product.title}
                 price={product.price * 0.85}
                 imageUrl={product.image}

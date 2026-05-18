@@ -1,0 +1,4 @@
+export const initialCartItems = [
+  { productId: 1, quantity: 1 },
+  { productId: 4, quantity: 2 }
+];

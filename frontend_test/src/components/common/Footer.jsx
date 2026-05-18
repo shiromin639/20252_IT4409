@@ -1,11 +1,12 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
     <footer className="bg-white border-t mt-10">
       <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div>
-          <h3 className="font-bold text-gray-800 mb-4 text-lg">TechStore</h3>
+          <Link to="/" className="font-bold text-gray-800 mb-4 text-lg block">TechStore</Link>
           <p className="text-sm text-gray-600 mb-2">
             Hệ thống bán lẻ laptop, PC và phụ kiện công nghệ hàng đầu.
           </p>
@@ -15,9 +16,9 @@ const Footer = () => {
           <h3 className="font-bold text-gray-800 mb-4">Về chúng tôi</h3>
           <ul className="text-sm text-gray-600 space-y-2">
             <li>
-              <a href="#" className="hover:text-blue-600">
-                Giới thiệu
-              </a>
+              <Link to="/products" className="hover:text-blue-600">
+                Sản phẩm
+              </Link>
             </li>
             <li>
               <a href="#" className="hover:text-blue-600">
