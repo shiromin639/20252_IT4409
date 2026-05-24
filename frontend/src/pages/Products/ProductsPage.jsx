@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { SlidersHorizontal, X, ChevronDown, Search, Grid, List } from 'lucide-react'
-import { productService } from '../../services/api'
-import { brands, ramOptions, priceRanges } from '../../data/laptops'
+import { productApi } from '../../services/api'
+import { ramOptions, priceRanges } from '../../constants'
 import { formatPrice } from '../../utils'
 import ProductCard from '../../components/product/ProductCard'
 import { Pagination, SkeletonCard } from '../../components/common'
@@ -19,8 +19,10 @@ const SORT_OPTIONS = [
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState([])
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showFilter, setShowFilter] = useState(false)
+  const [apiBrands, setApiBrands] = useState([])
 
   const [filters, setFilters] = useState({
     brand: searchParams.get('brand') || 'all',
@@ -37,6 +39,11 @@ export default function ProductsPage() {
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
+      if (apiBrands.length === 0) {
+        const brandsRes = await productApi.getBrands();
+        setApiBrands(brandsRes);
+      }
+      
       const params = {
         brand: filters.brand !== 'all' ? filters.brand : undefined,
         sort: filters.sort,
@@ -46,12 +53,13 @@ export default function ProductsPage() {
         maxPrice: filters.priceRange?.max !== Infinity ? filters.priceRange?.max : undefined,
         category: filters.category || undefined,
       }
-      const result = await productService.getAll(params)
-      setProducts(result)
+        const result = await productApi.getAll(params)
+        setProducts(result.data)
+        setTotalCount(result.count)
     } finally {
       setLoading(false)
     }
-  }, [filters.brand, filters.sort, debouncedSearch, filters.ram, filters.priceRange, filters.category])
+  }, [filters.brand, filters.sort, debouncedSearch, filters.ram, filters.priceRange, filters.category, apiBrands.length])
 
   useEffect(() => { fetchProducts() }, [fetchProducts])
 
@@ -80,7 +88,7 @@ export default function ProductsPage() {
             <h1 className={styles.pageTitle}>Tất cả sản phẩm</h1>
             {!loading && (
               <p className={styles.pageCount}>
-                Tìm thấy <strong>{products.length}</strong> sản phẩm
+                Tìm thấy <strong>{totalCount}</strong> sản phẩm
               </p>
             )}
           </div>
@@ -150,13 +158,13 @@ export default function ProductsPage() {
                 >
                   Tất cả
                 </button>
-                {brands.map(b => (
+                {apiBrands.map(b => (
                   <button
-                    key={b.id}
-                    className={`${styles.filterChip} ${filters.brand === b.id ? styles.active : ''}`}
-                    onClick={() => updateFilter('brand', b.id)}
+                    key={b}
+                    className={`${styles.filterChip} ${filters.brand === b ? styles.active : ''}`}
+                    onClick={() => updateFilter('brand', b)}
                   >
-                    {b.logo} {b.name}
+                    {b.toUpperCase()}
                   </button>
                 ))}
               </div>
@@ -214,7 +222,7 @@ export default function ProductsPage() {
               <div className={styles.activeFilters}>
                 {filters.brand !== 'all' && (
                   <div className={styles.activeFilter}>
-                    {brands.find(b => b.id === filters.brand)?.name}
+                    {filters.brand.toUpperCase()}
                     <button onClick={() => updateFilter('brand', 'all')}><X size={12} /></button>
                   </div>
                 )}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { User, Package, Lock, Edit2, Check, X } from 'lucide-react'
 import { selectUser, updateProfile } from '../../store/authSlice'
-import { orderService } from '../../services/api'
+import { orderApi } from '../../services/api'
 import { formatPrice, formatDate, getStatusLabel } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Profile.module.css'
@@ -23,10 +23,35 @@ export default function ProfilePage() {
   const [passForm, setPassForm] = useState({ current: '', next: '', confirm: '' })
 
   useEffect(() => {
-    if (activeTab === 'orders') {
-      orderService.getMyOrders().then(setOrders)
+    if (activeTab === 'orders' && user) {
+      const fetchOrders = async () => {
+        try {
+          const res = await orderApi.getUserOrders(user.id)
+          const ordersWithItems = await Promise.all(
+            res.data.map(async (order) => {
+              const itemsRes = await orderApi.getOrderItems(order.id)
+              const items = Array.isArray(itemsRes) ? itemsRes : itemsRes.data || []
+              return {
+                ...order,
+                date: order.created_at,
+                total: order.total_amount,
+                items: items.map(i => ({
+                  id: i.id || i.product_id,
+                  name: `Sản phẩm #${i.product_id}`,
+                  qty: i.quantity,
+                  price: i.unit_price || 0
+                }))
+              }
+            })
+          )
+          setOrders(ordersWithItems)
+        } catch (e) {
+          toast.error("Không thể tải đơn hàng")
+        }
+      }
+      fetchOrders()
     }
-  }, [activeTab])
+  }, [activeTab, user])
 
   const handleSaveProfile = () => {
     dispatch(updateProfile(form))

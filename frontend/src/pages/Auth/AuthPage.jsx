@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react'
-import { authService } from '../../services/api'
-import { loginSuccess } from '../../store/authSlice'
+import { authApi } from '../../services/api'
+import { loginUser } from '../../store/authSlice'
 import toast from 'react-hot-toast'
 import styles from './Auth.module.css'
 
@@ -13,7 +13,7 @@ export default function AuthPage() {
   const dispatch = useDispatch()
   const isLogin = location.pathname === '/login'
 
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ name: '', username: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({})
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -23,7 +23,7 @@ export default function AuthPage() {
   const validate = () => {
     const e = {}
     if (!isLogin && !form.name.trim()) e.name = 'Vui lòng nhập họ tên'
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Email không hợp lệ'
+    if (!form.username.trim()) e.username = 'Tên đăng nhập / Email không được để trống'
     if (form.password.length < 6) e.password = 'Mật khẩu ít nhất 6 ký tự'
     if (!isLogin && form.password !== form.confirm) e.confirm = 'Mật khẩu không khớp'
     return e
@@ -36,14 +36,17 @@ export default function AuthPage() {
 
     setLoading(true)
     try {
-      const result = isLogin
-        ? await authService.login({ email: form.email, password: form.password })
-        : await authService.register(form)
-      dispatch(loginSuccess(result))
-      toast.success(isLogin ? 'Đăng nhập thành công!' : 'Đăng ký thành công!')
+      if (isLogin) {
+        await dispatch(loginUser({ username: form.username, password: form.password })).unwrap()
+        toast.success('Đăng nhập thành công!')
+      } else {
+        await authApi.register({ username: form.username, password: form.password, full_name: form.name })
+        await dispatch(loginUser({ username: form.username, password: form.password })).unwrap()
+        toast.success('Đăng ký thành công!')
+      }
       navigate(from, { replace: true })
     } catch (err) {
-      toast.error(err.message || 'Có lỗi xảy ra')
+      toast.error(err.message || (typeof err === 'string' ? err : 'Có lỗi xảy ra'))
     } finally {
       setLoading(false)
     }
@@ -90,19 +93,19 @@ export default function AuthPage() {
           )}
 
           <div className="form-group">
-            <label className="form-label">Email</label>
+            <label className="form-label">Tên đăng nhập hoặc Email</label>
             <div className={styles.inputWrap}>
               <Mail size={16} className={styles.inputIcon} />
               <input
-                type="email"
-                placeholder="email@example.com"
-                value={form.email}
-                onChange={set('email')}
-                className={`form-input ${errors.email ? 'error' : ''}`}
+                type="text"
+                placeholder="Tên đăng nhập"
+                value={form.username}
+                onChange={set('username')}
+                className={`form-input ${errors.username ? 'error' : ''}`}
                 style={{ paddingLeft: '40px' }}
               />
             </div>
-            {errors.email && <span className="form-error">{errors.email}</span>}
+            {errors.username && <span className="form-error">{errors.username}</span>}
           </div>
 
           <div className="form-group">
@@ -157,7 +160,7 @@ export default function AuthPage() {
         {/* Demo hint */}
         {isLogin && (
           <div className={styles.demoHint}>
-            <strong>Demo Admin:</strong> admin@techlap.vn / admin123
+            <strong>Demo Admin:</strong> admin / admin123 (nếu đã tạo)
           </div>
         )}
 

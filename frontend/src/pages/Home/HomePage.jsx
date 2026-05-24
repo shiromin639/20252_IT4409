@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, ChevronLeft, ChevronRight, Zap, Shield, Truck, HeadphonesIcon, Star, Clock } from 'lucide-react'
-import { productService, usedProductService } from '../../services/api'
-import { brands, banners } from '../../data/laptops'
+import { ArrowRight, ChevronLeft, ChevronRight, Zap, HeadphonesIcon, Clock, Star, Truck, Shield } from 'lucide-react'
+import { banners } from '../../constants'
+import { productApi } from '../../services/api'
 import ProductCard from '../../components/product/ProductCard'
 import { SkeletonCard } from '../../components/common'
 import { formatPrice } from '../../utils'
@@ -14,6 +14,7 @@ export default function HomePage() {
   const [flashSale, setFlashSale] = useState([])
   const [usedProducts, setUsedProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [brands, setBrands] = useState([])
   const [currentBanner, setCurrentBanner] = useState(0)
   const [flashTime, setFlashTime] = useState({ h: 5, m: 42, s: 17 })
   const navigate = useNavigate()
@@ -21,17 +22,23 @@ export default function HomePage() {
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [f, n, fs, u] = await Promise.all([
-        productService.getFeatured(),
-        productService.getNew(),
-        productService.getFlashSale(),
-        usedProductService.getHotDeals(),
-      ])
-      setFeatured(f)
-      setNewProducts(n)
-      setFlashSale(fs)
-      setUsedProducts(u)
-      setLoading(false)
+      try {
+        const [featuredRes, newRes, flashRes, brandsRes] = await Promise.all([
+          productApi.getAll({ limit: 8 }),
+          productApi.getAll({ sort: 'newest', limit: 4 }),
+          productApi.getAll({ sort: 'price-desc', limit: 4 }), // Simulating flash sale
+          productApi.getBrands()
+        ])
+        setFeatured(featuredRes.data)
+        setNewProducts(newRes.data)
+        setFlashSale(flashRes.data)
+        setBrands(brandsRes)
+        setUsedProducts([])
+      } catch (err) {
+        console.error("Failed to load home data", err)
+      } finally {
+        setLoading(false)
+      }
     }
     fetchAll()
   }, [])
@@ -142,14 +149,9 @@ export default function HomePage() {
             </div>
           </div>
           <div className={styles.brandsGrid}>
-            {brands.map(brand => (
-              <Link
-                key={brand.id}
-                to={`/products?brand=${brand.id}`}
-                className={styles.brandCard}
-              >
-                <span className={styles.brandLogo}>{brand.logo}</span>
-                <span className={styles.brandName}>{brand.name}</span>
+            {brands.map(b => (
+              <Link key={b} to={`/products?brand=${b}`} className={styles.brandCard}>
+                <span>{b.toUpperCase()}</span>
               </Link>
             ))}
           </div>

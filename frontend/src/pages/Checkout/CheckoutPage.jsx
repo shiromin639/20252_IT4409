@@ -5,8 +5,9 @@ import {
   CheckCircle, CreditCard, Banknote, MapPin, User, Phone,
   Copy, Check, RefreshCw, Clock, AlertCircle, ChevronDown, ChevronUp,
 } from 'lucide-react'
-import { selectCartItems, selectCartTotal, clearCart } from '../../store/cartSlice'
-import { orderService } from '../../services/api'
+import { selectCartItems, selectCartTotal, clearCartAsync } from '../../store/cartSlice'
+import { selectUser } from '../../store/authSlice'
+import { orderApi } from '../../services/api'
 import { formatPrice } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Checkout.module.css'
@@ -186,6 +187,7 @@ function QRCodeSection({ amount, orderRef, onConfirm, loading }) {
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const user = useSelector(selectUser)
   const items = useSelector(selectCartItems)
   const total = useSelector(selectCartTotal)
 
@@ -225,12 +227,17 @@ export default function CheckoutPage() {
     // COD flow
     setLoading(true)
     try {
-      await orderService.create({ items, total: finalTotal, ...form, payment })
-      dispatch(clearCart())
+      const orderData = {
+        user_id: user.id,
+        shipping_address: form.address,
+        items: items.map(item => ({ product_id: item.id, quantity: item.quantity }))
+      }
+      await orderApi.create(orderData)
+      await dispatch(clearCartAsync())
       setStep('success')
       toast.success('Đặt hàng thành công! 🎉')
-    } catch {
-      toast.error('Có lỗi xảy ra, vui lòng thử lại')
+    } catch (err) {
+      toast.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
     } finally {
       setLoading(false)
     }
@@ -239,12 +246,17 @@ export default function CheckoutPage() {
   const handleQRConfirm = async () => {
     setLoading(true)
     try {
-      await orderService.create({ items, total: finalTotal, ...form, payment, orderRef })
-      dispatch(clearCart())
+      const orderData = {
+        user_id: user.id,
+        shipping_address: form.address,
+        items: items.map(item => ({ product_id: item.id, quantity: item.quantity }))
+      }
+      await orderApi.create(orderData)
+      await dispatch(clearCartAsync())
       setStep('success')
       toast.success('Xác nhận thành công! 🎉')
-    } catch {
-      toast.error('Có lỗi xảy ra, vui lòng thử lại')
+    } catch (err) {
+      toast.error(err.message || 'Có lỗi xảy ra, vui lòng thử lại')
     } finally {
       setLoading(false)
     }
@@ -332,7 +344,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className={styles.orderItemInfo}>
                           <div className={styles.orderItemName}>{item.name}</div>
-                          <div className={styles.orderItemSpec}>{item.specs?.ram} · {item.specs?.storage}</div>
+                          <div className={styles.orderItemSpec}>{item.specifications?.ram || 'RAM'} · {item.specifications?.storage || 'SSD'}</div>
                         </div>
                         <div className={styles.orderItemPrice}>{formatPrice(item.price * item.quantity)}</div>
                       </div>
@@ -523,7 +535,7 @@ export default function CheckoutPage() {
                     </div>
                     <div className={styles.orderItemInfo}>
                       <div className={styles.orderItemName}>{item.name}</div>
-                      <div className={styles.orderItemSpec}>{item.specs?.ram} · {item.specs?.storage}</div>
+                      <div className={styles.orderItemSpec}>{item.specifications?.ram || 'RAM'} · {item.specifications?.storage || 'SSD'}</div>
                     </div>
                     <div className={styles.orderItemPrice}>{formatPrice(item.price * item.quantity)}</div>
                   </div>

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, Tag } from 'lucide-react'
-import { selectCartItems, selectCartTotal, removeFromCart, updateQuantity } from '../../store/cartSlice'
+import { selectCartItems, selectCartTotal, removeFromCartAsync, updateQuantityAsync } from '../../store/cartSlice'
 import { formatPrice } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Cart.module.css'
@@ -12,7 +12,7 @@ export default function CartPage() {
   const dispatch = useDispatch()
 
   const handleRemove = (id, name) => {
-    dispatch(removeFromCart(id))
+    dispatch(removeFromCartAsync(id))
     toast.success(`Đã xóa ${name.slice(0, 25)}...`)
   }
 
@@ -47,18 +47,18 @@ export default function CartPage() {
             {items.map(item => (
               <div key={item.id} className={styles.item}>
                 <Link to={`/products/${item.id}`} className={styles.itemImage}>
-                  <img src={item.image} alt={item.name} />
+                  <img src={item.image || 'https://via.placeholder.com/150?text=Laptop'} alt={item.name} />
                 </Link>
 
                 <div className={styles.itemInfo}>
                   <Link to={`/products/${item.id}`} className={styles.itemBrand}>
-                    {item.brand.toUpperCase()}
+                    {(item.specifications?.brand || item.brand || 'Khác').toUpperCase()}
                   </Link>
                   <Link to={`/products/${item.id}`} className={styles.itemName}>
                     {item.name}
                   </Link>
                   <div className={styles.itemSpecs}>
-                    {item.specs.cpu.split(' ').slice(0, 3).join(' ')} · {item.specs.ram} · {item.specs.storage}
+                    {item.specifications?.cpu?.split(' ').slice(0, 3).join(' ') || 'CPU'} · {item.specifications?.ram || 'RAM'} · {item.specifications?.storage || 'SSD'}
                   </div>
                 </div>
 
@@ -66,7 +66,7 @@ export default function CartPage() {
                   <div className={styles.qtyControl}>
                     <button
                       className={styles.qtyBtn}
-                      onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity - 1 }))}
+                      onClick={() => dispatch(updateQuantityAsync({ id: item.id, quantity: item.quantity - 1 }))}
                       disabled={item.quantity <= 1}
                     >
                       <Minus size={14} />
@@ -74,8 +74,8 @@ export default function CartPage() {
                     <span className={styles.qtyVal}>{item.quantity}</span>
                     <button
                       className={styles.qtyBtn}
-                      onClick={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))}
-                      disabled={item.quantity >= item.stock}
+                      onClick={() => dispatch(updateQuantityAsync({ id: item.id, quantity: item.quantity + 1 }))}
+                      disabled={item.quantity >= (item.stock || 10)}
                     >
                       <Plus size={14} />
                     </button>

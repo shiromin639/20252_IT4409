@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import { ShoppingCart, Zap, Heart, Shield, Truck, RotateCcw, Star, ChevronRight, Check } from 'lucide-react'
-import { productService } from '../../services/api'
-import { addToCart } from '../../store/cartSlice'
+import { productApi, inventoryApi } from '../../services/api'
+import { addToCartAsync } from '../../store/cartSlice'
 import { useWishlist } from '../../hooks'
 import { formatPrice } from '../../utils'
 import ProductCard from '../../components/product/ProductCard'
@@ -18,6 +18,7 @@ export default function ProductDetailPage() {
   const { toggle, isWished } = useWishlist()
 
   const [product, setProduct] = useState(null)
+  const [stock, setStock] = useState(0)
   const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeImage, setActiveImage] = useState(0)
@@ -30,10 +31,19 @@ export default function ProductDetailPage() {
       setLoading(true)
       setActiveImage(0)
       try {
-        const p = await productService.getById(id)
+        const p = await productApi.getById(id)
         setProduct(p)
-        const rel = await productService.getRelated(p.id, p.brand)
-        setRelated(rel)
+        
+        try {
+          const inv = await inventoryApi.getStock(p.id)
+          setStock(inv.quantity)
+        } catch (err) {
+          console.error("Failed to load inventory", err)
+          setStock(0)
+        }
+
+        const relRes = await productApi.getAll({ brand: p.specifications?.brand || p.brand, limit: 5 })
+        setRelated(relRes.data.filter(x => x.id !== p.id).slice(0, 4))
       } catch {
         navigate('/products')
       } finally {
@@ -50,27 +60,29 @@ export default function ProductDetailPage() {
   const wished = isWished(product.id)
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) dispatch(addToCart(product))
+    dispatch(addToCartAsync({ product, quantity }))
     toast.success('Đã thêm vào giỏ hàng!')
     setAddedToCart(true)
     setTimeout(() => setAddedToCart(false), 2000)
   }
 
   const handleBuyNow = () => {
-    dispatch(addToCart(product))
+    dispatch(addToCartAsync({ product, quantity }))
     navigate('/cart')
   }
 
+  const specs = product.specifications || {}
   const specEntries = [
-    ['CPU', product.specs.cpu],
-    ['RAM', product.specs.ram],
-    ['Lưu trữ', product.specs.storage],
-    ['Màn hình', product.specs.screen],
-    ['GPU', product.specs.gpu],
-    ['Pin', product.specs.battery],
-    ['Hệ điều hành', product.specs.os],
-    ['Trọng lượng', product.specs.weight],
-  ]
+    ['Thương hiệu', specs.brand || 'N/A'],
+    ['CPU', specs.cpu || 'N/A'],
+    ['RAM', specs.ram || 'N/A'],
+    ['Lưu trữ', specs.storage || 'N/A'],
+    ['Màn hình', specs.screen || 'N/A'],
+    ['GPU', specs.gpu || 'N/A'],
+    ['Pin', specs.battery || 'N/A'],
+    ['Hệ điều hành', specs.os || 'N/A'],
+    ['Trọng lượng', specs.weight || 'N/A'],
+  ].filter(([, val]) => val !== 'N/A')
 
   return (
     <div className={styles.page}>
@@ -88,8 +100,8 @@ export default function ProductDetailPage() {
           {/* ── GALLERY ── */}
           <div className={styles.gallery}>
             <div className={styles.mainImage}>
-              <img src={product.images?.[activeImage] || product.image} alt={product.name} />
-              {product.discount > 0 && (
+              <img src={product.images?.[activeImage] || product.image || 'https://via.placeholder.com/600x400?text=Laptop'} alt={product.name} />
+              {(product.discount || 0) > 0 && (
                 <div className={styles.discountBadge}>-{product.discount}%</div>
               )}
             </div>
@@ -115,19 +127,19 @@ export default function ProductDetailPage() {
 
             {/* Rating */}
             <div className={styles.ratingRow}>
-              <StarRating rating={product.rating} size={16} />
-              <span className={styles.ratingVal}>{product.rating}</span>
-              <span className={styles.ratingCount}>({product.reviews} đánh giá)</span>
-              <span className={styles.soldCount}>• Đã bán {product.sold.toLocaleString()}</span>
+              <StarRating rating={product.rating || 5} size={16} />
+              <span className={styles.ratingVal}>{product.rating || 5}</span>
+              <span className={styles.ratingCount}>({product.reviews || 0} đánh giá)</span>
+              <span className={styles.soldCount}>• Đã bán {(product.sold || 0).toLocaleString()}</span>
             </div>
 
             {/* Price */}
             <div className={styles.priceBox}>
               <span className={styles.currentPrice}>{formatPrice(product.price)}</span>
-              {product.discount > 0 && (
+              {(product.discount || 0) > 0 && (
                 <div className={styles.priceRow}>
                   <span className="price-original" style={{ fontSize: 15 }}>
-                    {formatPrice(product.originalPrice)}
+                    {formatPrice(product.originalPrice || product.price)}
                   </span>
                   <span className="price-discount">-{product.discount}%</span>
                 </div>
@@ -152,9 +164,9 @@ export default function ProductDetailPage() {
 
             {/* Stock */}
             <div className={styles.stockRow}>
-              <div className={`${styles.stockDot} ${product.stock > 5 ? styles.inStock : styles.lowStock}`} />
+              <div className={`${styles.stockDot} ${stock > 5 ? styles.inStock : styles.lowStock}`} />
               <span className={styles.stockText}>
-                {product.stock > 5 ? 'Còn hàng' : `Chỉ còn ${product.stock} sản phẩm`}
+                {stock > 5 ? 'Còn hàng' : stock > 0 ? `Chỉ còn ${stock} sản phẩm` : 'Hết hàng'}
               </span>
             </div>
 
@@ -165,13 +177,13 @@ export default function ProductDetailPage() {
                 <button
                   className={styles.qtyBtn}
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
+                  disabled={quantity <= 1 || stock === 0}
                 >−</button>
-                <span className={styles.qtyVal}>{quantity}</span>
+                <span className={styles.qtyVal}>{stock === 0 ? 0 : quantity}</span>
                 <button
                   className={styles.qtyBtn}
-                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  disabled={quantity >= product.stock}
+                  onClick={() => setQuantity(Math.min(stock, quantity + 1))}
+                  disabled={quantity >= stock || stock === 0}
                 >+</button>
               </div>
             </div>
@@ -181,12 +193,14 @@ export default function ProductDetailPage() {
               <button
                 className={`btn btn-primary btn-lg ${styles.btnFull} ${addedToCart ? styles.btnAdded : ''}`}
                 onClick={handleAddToCart}
+                disabled={stock === 0}
               >
                 {addedToCart ? <><Check size={18} /> Đã thêm!</> : <><ShoppingCart size={18} /> Thêm vào giỏ</>}
               </button>
               <button
                 className={`btn btn-lg ${styles.btnBuyNow}`}
                 onClick={handleBuyNow}
+                disabled={stock === 0}
               >
                 <Zap size={18} /> Mua ngay
               </button>
@@ -221,7 +235,7 @@ export default function ProductDetailPage() {
             {[
               { id: 'specs', label: 'Thông số kỹ thuật' },
               { id: 'desc', label: 'Mô tả sản phẩm' },
-              { id: 'reviews', label: `Đánh giá (${product.reviews})` },
+              { id: 'reviews', label: `Đánh giá (${product.reviews || 0})` },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -259,10 +273,10 @@ export default function ProductDetailPage() {
             {activeTab === 'reviews' && (
               <div className={styles.reviews}>
                 <div className={styles.reviewSummary}>
-                  <div className={styles.reviewScore}>{product.rating}</div>
+                  <div className={styles.reviewScore}>{product.rating || 5}</div>
                   <div>
-                    <StarRating rating={product.rating} size={20} />
-                    <p>{product.reviews} đánh giá</p>
+                    <StarRating rating={product.rating || 5} size={20} />
+                    <p>{product.reviews || 0} đánh giá</p>
                   </div>
                 </div>
                 {[5, 4, 3, 2, 1].map(star => (
