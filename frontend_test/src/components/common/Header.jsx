@@ -22,7 +22,7 @@ const Header = () => {
     <header className="bg-blue-600 text-white sticky top-0 z-50 shadow-md">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-6">
         <Link to="/" className="text-2xl font-extrabold tracking-wider">
-          MINI<span className="text-yellow-300">SHOP</span>
+          TECH<span className="text-yellow-300">STORE</span>
         </Link>
 
         <form onSubmit={handleSearch} className="flex-1 max-w-3xl hidden md:flex rounded-sm overflow-hidden bg-white">
