@@ -4,20 +4,31 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : true;
+
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: allowedOrigins }));
 
-// Kết nối MongoDB
+app.get('/health', (req, res) => {
+    res.json({ service: 'inventory', status: 'ok' });
+});
+
+if (!process.env.MONGO_URI) {
+    console.error('MONGO_URI is not configured for Inventory Service');
+    process.exit(1);
+}
+
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ Đã kết nối MongoDB cho Inventory Service'))
-    .catch((err) => console.error('Lỗi kết nối DB:', err));
+    .then(() => console.log('MongoDB connected for Inventory Service'))
+    .catch((err) => console.error('Inventory Service database connection error:', err));
 
-// Kết nối Router
 const inventoryRoute = require('./routes/inventory');
 app.use('/api/inventory', inventoryRoute);
 
-// Khởi động server
 const PORT = process.env.PORT || 3004;
 app.listen(PORT, () => {
-    console.log(`Inventory Service đang chạy tại cổng ${PORT}`);
+    console.log(`Inventory Service is running on port ${PORT}`);
 });
