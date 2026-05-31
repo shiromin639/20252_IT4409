@@ -2,6 +2,25 @@ import apiClient from './client';
 
 export const adminApi = {
   /**
+   * Analytics endpoints
+   */
+  getStats: async () => {
+    return apiClient.get('/admin/stats');
+  },
+  
+  getDailyRevenue: async () => {
+    return apiClient.get('/admin/revenue/daily');
+  },
+
+  getBestSellers: async () => {
+    return apiClient.get('/admin/best-sellers');
+  },
+
+  getRevenueByBrand: async () => {
+    return apiClient.get('/admin/revenue-by-brand');
+  },
+
+  /**
    * Gets all users (Admin only).
    */
   getUsers: async (skip = 0, limit = 100) => {

@@ -12,6 +12,7 @@ import { formatPrice, formatDate, getStatusLabel } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Admin.module.css'
 import ProductFormModal from './ProductFormModal'
+import { LineChart, Line, PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
 
 // ── SIDEBAR ──
 function AdminSidebar() {
@@ -84,83 +85,111 @@ function StatCard({ label, value, icon, trend, color = 'primary' }) {
 }
 
 // ── DASHBOARD HOME ──
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
 export function AdminHome() {
-  const [stats, setStats] = useState({ revenue: 0, ordersCount: 0, productsCount: 0, usersCount: 0 })
-  const [recentOrders, setRecentOrders] = useState([])
-  const [topProducts, setTopProducts] = useState([])
+  const [stats, setStats] = useState({ total_revenue: 0, total_orders: 0, total_products: 0, total_customers: 0 })
+  const [dailyRevenue, setDailyRevenue] = useState([])
+  const [bestSellers, setBestSellers] = useState([])
+  const [revenueByBrand, setRevenueByBrand] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchAnalytics = async () => {
       try {
-        const [ordersRes, productsRes, usersRes, recentOrdersRes] = await Promise.all([
-          adminApi.getAllOrders(0, 10000), // Get all for stats
-          productApi.getAll({ limit: 10000 }),
-          adminApi.getUsers(0, 10000),
-          adminApi.getAllOrders(0, 5) // Just recent 5 for display
+        setLoading(true)
+        const [statsRes, dailyRes, sellersRes, brandRes] = await Promise.all([
+          adminApi.getStats(),
+          adminApi.getDailyRevenue(),
+          adminApi.getBestSellers(),
+          adminApi.getRevenueByBrand()
         ])
         
-        const rev = ordersRes.data.reduce((sum, o) => sum + Number(o.total_amount), 0)
-        setStats({
-          revenue: rev,
-          ordersCount: ordersRes.count || ordersRes.data.length,
-          productsCount: productsRes.count || productsRes.data.length,
-          usersCount: usersRes.count || usersRes.data.length
-        })
-        setRecentOrders(recentOrdersRes.data)
-        setTopProducts(productsRes.data.slice(0, 5))
+        setStats(statsRes.data || statsRes)
+        setDailyRevenue(dailyRes.data || dailyRes)
+        setBestSellers(sellersRes.data || sellersRes)
+        setRevenueByBrand(brandRes.data || brandRes)
       } catch (err) {
-        console.error("Failed to load stats", err)
+        console.error("Failed to load analytics", err)
+        toast.error("Lỗi khi tải dữ liệu thống kê")
+      } finally {
+        setLoading(false)
       }
     }
-    fetchStats()
+    fetchAnalytics()
   }, [])
+
+  if (loading) {
+    return (
+      <div className={styles.adminContent} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <div>Đang tải dữ liệu...</div>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.adminContent}>
       <div className={styles.contentHeader}>
-        <h1 className={styles.contentTitle}>Tổng quan</h1>
+        <h1 className={styles.contentTitle}>Phân tích & Thống kê</h1>
         <span className={styles.contentDate}>{new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
       </div>
 
       <div className={styles.statsGrid}>
-        <StatCard label="Doanh thu gần đây" value={formatPrice(stats.revenue)} icon={<DollarSign size={20} />} trend="Chỉ hiển thị đơn mới nhất" color="primary" />
-        <StatCard label="Tổng đơn hàng" value={stats.ordersCount} icon={<ShoppingBag size={20} />} trend="Đang cập nhật" color="success" />
-        <StatCard label="Sản phẩm" value={stats.productsCount} icon={<Package size={20} />} trend="Đang cập nhật" color="warning" />
-        <StatCard label="Người dùng" value={stats.usersCount} icon={<Users size={20} />} trend="Đang cập nhật" color="primary" />
+        <StatCard label="Tổng doanh thu" value={formatPrice(stats.total_revenue)} icon={<DollarSign size={20} />} trend="Từ trước đến nay" color="primary" />
+        <StatCard label="Tổng đơn hàng" value={stats.total_orders} icon={<ShoppingBag size={20} />} trend="Từ trước đến nay" color="success" />
+        <StatCard label="Tổng sản phẩm" value={stats.total_products} icon={<Package size={20} />} trend="Hoạt động" color="warning" />
+        <StatCard label="Tổng khách hàng" value={stats.total_customers} icon={<Users size={20} />} trend="Đã đăng ký" color="primary" />
       </div>
 
-      <div className={styles.recentGrid}>
-        <div className={styles.recentCard}>
-          <h3 className={styles.recentTitle}>Đơn hàng gần đây</h3>
-          <div className={styles.recentList}>
-            {recentOrders.map(order => {
-              const status = getStatusLabel(order.status)
-              return (
-                <div key={order.id} className={styles.recentRow}>
-                  <div>
-                    <div className={styles.recentId}>#{order.id}</div>
-                    <div className={styles.recentSub}>{formatDate(order.created_at)}</div>
-                  </div>
-                  <span className={`badge badge-${status.color}`}>{status.label}</span>
-                  <div className={styles.recentPrice}>{formatPrice(order.total_amount)}</div>
-                </div>
-              )
-            })}
+      <div className={styles.recentGrid} style={{ marginTop: '2rem' }}>
+        <div className={styles.recentCard} style={{ gridColumn: 'span 2' }}>
+          <h3 className={styles.recentTitle}>Doanh thu 7 ngày gần nhất</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={dailyRevenue} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="date" stroke="#6b7280" fontSize={12} tickLine={false} />
+                <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
+                <Tooltip formatter={(value) => formatPrice(value)} labelStyle={{ color: '#374151' }} />
+                <Line type="monotone" dataKey="revenue" name="Doanh thu" stroke="var(--color-primary)" strokeWidth={3} dot={{ r: 4, fill: "var(--color-primary)" }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         <div className={styles.recentCard}>
-          <h3 className={styles.recentTitle}>Sản phẩm mới</h3>
-          <div className={styles.recentList}>
-            {topProducts.map((p, i) => (
-              <div key={p.id} className={styles.recentRow}>
-                <div className={styles.rankNum}>{i + 1}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className={styles.recentId} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                  <div className={styles.recentSub}>Giá: {formatPrice(p.price)}</div>
-                </div>
-              </div>
-            ))}
+          <h3 className={styles.recentTitle}>Doanh thu theo thương hiệu</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={revenueByBrand} dataKey="revenue" nameKey="brand" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+                  {revenueByBrand.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatPrice(value)} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className={styles.recentCard}>
+          <h3 className={styles.recentTitle}>Top 10 sản phẩm bán chạy nhất</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <BarChart data={bestSellers} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" />
+                <XAxis type="number" stroke="#6b7280" fontSize={12} hide />
+                <YAxis dataKey="product_name" type="category" stroke="#6b7280" fontSize={11} width={100} tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '...' : value} />
+                <Tooltip cursor={{fill: '#f3f4f6'}} formatter={(value) => [`${value} sản phẩm`, 'Đã bán']} />
+                <Bar dataKey="sold" name="Đã bán" fill="var(--color-success)" radius={[0, 4, 4, 0]} barSize={15}>
+                  {bestSellers.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

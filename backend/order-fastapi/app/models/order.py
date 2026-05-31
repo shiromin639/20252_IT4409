@@ -18,7 +18,7 @@ class OrderStatus(str, Enum):
 
 
 class OrderBase(SQLModel):
-    user_id: str
+    user_id: int
     status: str = Field(default=OrderStatus.PENDING.value)
     total_amount: Decimal = Field(
         default=Decimal("0"),
@@ -53,7 +53,7 @@ class Order(OrderBase, table=True):
 
 
 class OrderCreate(SQLModel):
-    user_id: str
+    user_id: int
     shipping_address: str | None = None
     payment_method: str = "COD"
     items: list["OrderItemCreate"] = []

@@ -74,6 +74,8 @@ func main() {
 		r.Mount("/login", userProxy)
 		r.Mount("/register", userProxy)
 		r.Mount("/profile", userProxy)
+
+		r.Mount("/admin", orderProxy)
 	})
 
 	s := http.Server{

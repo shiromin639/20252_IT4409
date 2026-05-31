@@ -1,4 +1,8 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { selectIsAuthenticated } from './store/authSlice'
+import { fetchCart } from './store/cartSlice'
 import { ThemeProvider } from './context/ThemeContext'
 import Layout from './components/layout/Layout'
 import { ProtectedRoute, ErrorBoundary } from './components/common'
@@ -37,6 +41,15 @@ import PaymentGuidePage from './pages/Policies/PaymentGuidePage'
 
 
 export default function App() {
+  const dispatch = useDispatch()
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchCart())
+    }
+  }, [dispatch, isAuthenticated])
+
   return (
     <ThemeProvider>
       <ErrorBoundary>

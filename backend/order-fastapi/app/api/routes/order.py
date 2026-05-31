@@ -107,7 +107,7 @@ async def read_orders(session: SessionDep, skip: int = 0, limit: int = 100):
 
 @router.get("/orders/user/{user_id}", response_model=OrdersPublic)
 async def read_orders_by_user(
-    session: SessionDep, user_id: str, skip: int = 0, limit: int = 100
+    session: SessionDep, user_id: int, skip: int = 0, limit: int = 100
 ):
     count_statement = (
         select(func.count()).select_from(Order).where(Order.user_id == user_id)

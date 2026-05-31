@@ -28,6 +28,12 @@ async def register(session: SessionDep, user_register: UserRegister):
     await session.refresh(user)
     return user
 
+@router.get("/count", response_model=dict)
+async def get_user_count(session: SessionDep):
+    count_statement = select(func.count()).select_from(User)
+    count = await session.exec(count_statement)
+    return {"count": count.one()}
+
 @router.get("/", response_model=UsersPublic)
 async def read_users(session: SessionDep, current_user: CurrentSuperUser, skip: int = 0, limit: int = 100):
     count_statement = select(func.count()).select_from(User)

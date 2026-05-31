@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import { authApi } from '../services/api'
-import { clearCart } from './cartSlice'
+
 
 const savedUser = localStorage.getItem('user')
 const savedToken = localStorage.getItem('token')

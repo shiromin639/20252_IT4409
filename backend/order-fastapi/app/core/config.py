@@ -16,10 +16,10 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = ""
     
     # VNPay Sandbox Configuration
-    VNPAY_TMN_CODE: str = "TMM_CODE"
-    VNPAY_HASH_SECRET: str = "SECRET"
-    VNPAY_RETURN_URL: str = "http://localhost:5173/payment/vnpay/return"
-    VNPAY_PAYMENT_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+    VNPAY_TMN_CODE: str
+    VNPAY_HASH_SECRET: str
+    VNPAY_RETURN_URL: str
+    VNPAY_PAYMENT_URL: str
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -35,3 +35,13 @@ class Settings(BaseSettings):
 
 
 settings = Settings()  # type: ignore
+
+if not settings.VNPAY_TMN_CODE:
+    raise ValueError("VNPAY_TMN_CODE environment variable is empty or not set!")
+if not settings.VNPAY_HASH_SECRET:
+    raise ValueError("VNPAY_HASH_SECRET environment variable is empty or not set!")
+
+print(f"Loaded VNPay configuration:")
+print(f" - TMN_CODE: {settings.VNPAY_TMN_CODE}")
+print(f" - RETURN_URL: {settings.VNPAY_RETURN_URL}")
+print(f" - HASH_SECRET: {'*' * len(settings.VNPAY_HASH_SECRET)}")
