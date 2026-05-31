@@ -13,6 +13,13 @@ export const orderApi = {
   },
 
   /**
+   * Creates a VNPay payment URL for an order.
+   */
+  createVNPay: async (paymentData) => {
+    return apiClient.post('/payments/vnpay/create', paymentData);
+  },
+
+  /**
    * Gets all orders for a specific user.
    */
   getUserOrders: async (userId, skip = 0, limit = 100) => {

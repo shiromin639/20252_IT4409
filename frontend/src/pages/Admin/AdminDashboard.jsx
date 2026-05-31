@@ -11,6 +11,7 @@ import { adminApi, productApi } from '../../services/api'
 import { formatPrice, formatDate, getStatusLabel } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Admin.module.css'
+import ProductFormModal from './ProductFormModal'
 
 // ── SIDEBAR ──
 function AdminSidebar() {
@@ -172,12 +173,18 @@ export function AdminProducts() {
   const [search, setSearch] = useState('')
   const [products, setProducts] = useState([])
   const [total, setTotal] = useState(0)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
 
-  useEffect(() => {
+  const fetchProducts = () => {
     productApi.getAll({ limit: 100 }).then(res => {
       setProducts(res.data)
       setTotal(res.count)
     }).catch(console.error)
+  }
+
+  useEffect(() => {
+    fetchProducts()
   }, [])
 
   const filtered = products.filter(p =>
@@ -200,7 +207,7 @@ export function AdminProducts() {
     <div className={styles.adminContent}>
       <div className={styles.contentHeader}>
         <h1 className={styles.contentTitle}>Quản lý sản phẩm</h1>
-        <button className="btn btn-primary btn-sm">
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditingProduct(null); setIsModalOpen(true); }}>
           <Plus size={15} /> Thêm sản phẩm
         </button>
       </div>
@@ -236,7 +243,7 @@ export function AdminProducts() {
                 <tr key={p.id}>
                   <td>
                     <div className={styles.productCell}>
-                      <img src={p.image || 'https://via.placeholder.com/150?text=Laptop'} alt={p.name} className={styles.productThumb} />
+                      <img src={p.image_url || p.image || p.specifications?.image_url || p.specs?.image_url || 'https://via.placeholder.com/150?text=Laptop'} alt={p.name || 'Product'} className={styles.productThumb} />
                       <span className={styles.productName}>{p.name}</span>
                     </div>
                   </td>
@@ -247,13 +254,13 @@ export function AdminProducts() {
                       {p.stock || 10}
                     </span>
                   </td>
-                  <td>{(p.sold || 0).toLocaleString()}</td>
+                  <td>{(p.total_sold || 0).toLocaleString()}</td>
                   <td>
                     <div className={styles.actions}>
                       <Link to={`/products/${p.id}`} className="btn btn-ghost btn-sm btn-icon" title="Xem">
                         <Eye size={14} />
                       </Link>
-                      <button className="btn btn-secondary btn-sm btn-icon" title="Sửa">
+                      <button className="btn btn-secondary btn-sm btn-icon" title="Sửa" onClick={() => { setEditingProduct(p); setIsModalOpen(true); }}>
                         <Edit2 size={14} />
                       </button>
                       <button className="btn btn-danger btn-sm btn-icon" title="Xóa" onClick={() => handleDelete(p.id)}>
@@ -267,6 +274,13 @@ export function AdminProducts() {
           </table>
         </div>
       </div>
+      
+      <ProductFormModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={() => { setIsModalOpen(false); fetchProducts(); }} 
+        initialData={editingProduct} 
+      />
     </div>
   )
 }
@@ -314,6 +328,7 @@ export function AdminOrders() {
                 <th>Mã đơn</th>
                 <th>Ngày đặt</th>
                 <th>Tổng tiền</th>
+                <th>Thanh toán</th>
                 <th>Trạng thái</th>
                 <th>Thao tác</th>
               </tr>
@@ -321,11 +336,18 @@ export function AdminOrders() {
             <tbody>
               {filtered.map(order => {
                 const status = getStatusLabel(order.status)
+                const paymentStatusColor = order.payment_status === 'PAID' ? 'success' : order.payment_status === 'FAILED' ? 'danger' : 'warning';
                 return (
                   <tr key={order.id}>
                     <td><strong>#{order.id}</strong></td>
                     <td>{formatDate(order.created_at)}</td>
                     <td className={styles.priceCell}>{formatPrice(order.total_amount)}</td>
+                    <td>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                        <span className="badge badge-secondary">{order.payment_method || 'COD'}</span>
+                        <span className={`badge badge-${paymentStatusColor}`}>{order.payment_status || 'PENDING'}</span>
+                      </div>
+                    </td>
                     <td><span className={`badge badge-${status.color}`}>{status.label}</span></td>
                     <td>
                       <div className={styles.actions}>

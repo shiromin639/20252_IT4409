@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react'
 import { authApi } from '../../services/api'
-import { loginUser } from '../../store/authSlice'
+import { loginUser, selectIsAuthenticated, selectIsAdmin } from '../../store/authSlice'
 import toast from 'react-hot-toast'
 import styles from './Auth.module.css'
 
@@ -11,7 +11,20 @@ export default function AuthPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useDispatch()
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const isCurrentlyAdmin = useSelector(selectIsAdmin)
   const isLogin = location.pathname === '/login'
+
+  // Pre-emptive redirect for already logged in users
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (isCurrentlyAdmin) {
+        navigate('/admin', { replace: true })
+      } else {
+        navigate('/', { replace: true })
+      }
+    }
+  }, [isAuthenticated, isCurrentlyAdmin, navigate])
 
   const [form, setForm] = useState({ name: '', username: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({})
@@ -36,15 +49,24 @@ export default function AuthPage() {
 
     setLoading(true)
     try {
+      let payload
       if (isLogin) {
-        await dispatch(loginUser({ username: form.username, password: form.password })).unwrap()
+        payload = await dispatch(loginUser({ username: form.username, password: form.password })).unwrap()
         toast.success('Đăng nhập thành công!')
       } else {
         await authApi.register({ username: form.username, password: form.password, full_name: form.name })
-        await dispatch(loginUser({ username: form.username, password: form.password })).unwrap()
+        payload = await dispatch(loginUser({ username: form.username, password: form.password })).unwrap()
         toast.success('Đăng ký thành công!')
       }
-      navigate(from, { replace: true })
+      
+      const loggedInUser = payload.user
+      const isAdmin = loggedInUser?.is_superuser === true || loggedInUser?.role === 'admin'
+      
+      if (isAdmin) {
+        navigate('/admin', { replace: true })
+      } else {
+        navigate(from, { replace: true })
+      }
     } catch (err) {
       toast.error(err.message || (typeof err === 'string' ? err : 'Có lỗi xảy ra'))
     } finally {

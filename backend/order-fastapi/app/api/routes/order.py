@@ -13,14 +13,61 @@ from app.models.order import (
 from app.models.order_item import OrderItem, OrderItemPublic
 
 
-router = APIRouter(tags=["order"])
+import json
+from fastapi import APIRouter, HTTPException
+from sqlmodel import col, func, select
+from app.api.deps import SessionDep
+from app.models.order import (
+    Order,
+    OrderCreate,
+    OrderPublic,
+    OrderUpdate,
+    OrdersPublic,
+)
+from app.models.order_item import OrderItem, OrderItemPublic
+from app.core.services import ProductService, InventoryService
 
+router = APIRouter(tags=["order"])
 
 @router.post("/orders", response_model=OrderPublic)
 async def create_order(session: SessionDep, order_in: OrderCreate):
-    total = sum(
-        item.unit_price * item.quantity for item in order_in.items
-    )
+    # Securely calculate total amount by fetching real product prices
+    calculated_items = []
+    total = Decimal("0")
+    
+    for item_in in order_in.items:
+        try:
+            real_price = ProductService.get_product_price(item_in.product_id)
+            calculated_items.append({
+                "product_id": item_in.product_id,
+                "quantity": item_in.quantity,
+                "unit_price": real_price
+            })
+            total += real_price * item_in.quantity
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # Securely reserve inventory
+    reserved_items = []
+    for item_data in calculated_items:
+        try:
+            InventoryService.reserve(item_data["product_id"], item_data["quantity"])
+            reserved_items.append(item_data)
+        except ValueError as e:
+            # Rollback previously reserved items
+            for res_item in reserved_items:
+                InventoryService.release(res_item["product_id"], res_item["quantity"])
+            raise HTTPException(status_code=400, detail=str(e))
+        except RuntimeError as e:
+            for res_item in reserved_items:
+                InventoryService.release(res_item["product_id"], res_item["quantity"])
+            raise HTTPException(status_code=500, detail=str(e))
+
+    # Securely commit inventory since reservation succeeded and increment product sales
+    for item_data in calculated_items:
+        InventoryService.commit(item_data["product_id"], item_data["quantity"])
+        ProductService.increment_sales(item_data["product_id"], item_data["quantity"])
+
     order = Order(
         user_id=order_in.user_id,
         shipping_address=order_in.shipping_address,
@@ -30,12 +77,12 @@ async def create_order(session: SessionDep, order_in: OrderCreate):
     session.commit()
     session.refresh(order)
 
-    for item_in in order_in.items:
+    for item_data in calculated_items:
         order_item = OrderItem(
             order_id=order.id,  # type: ignore
-            product_id=item_in.product_id,
-            quantity=item_in.quantity,
-            unit_price=item_in.unit_price,
+            product_id=item_data["product_id"],
+            quantity=item_data["quantity"],
+            unit_price=item_data["unit_price"],
         )
         session.add(order_item)
 

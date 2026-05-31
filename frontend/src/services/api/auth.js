@@ -38,7 +38,7 @@ export const authApi = {
    * Registers a new user.
    */
   register: async (data) => {
-    const response = await apiClient.post('/register', data);
+    const response = await apiClient.post('/users/register', data);
     return response;
   },
 

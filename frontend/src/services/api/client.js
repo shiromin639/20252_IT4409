@@ -108,7 +108,18 @@ apiClient.interceptors.response.use(
     }
     
     // Standardize error message
-    const errorMessage = error.response?.data?.detail || error.message || 'An error occurred';
+    let errorMessage = error.message || 'An error occurred';
+    const detail = error.response?.data?.detail;
+    if (detail) {
+      if (Array.isArray(detail)) {
+        errorMessage = detail.map(d => `${d.loc.slice(-1)}: ${d.msg}`).join(', ');
+      } else if (typeof detail === 'string') {
+        errorMessage = detail;
+      } else {
+        errorMessage = JSON.stringify(detail);
+      }
+    }
+    
     return Promise.reject(new Error(errorMessage));
   }
 );

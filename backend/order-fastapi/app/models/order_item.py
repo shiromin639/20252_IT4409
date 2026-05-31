@@ -32,7 +32,6 @@ class OrderItem(OrderItemBase, table=True):
 class OrderItemCreate(SQLModel):
     product_id: int
     quantity: int = Field(ge=1)
-    unit_price: Decimal = Field(gt=0)
 
 
 class OrderItemPublic(OrderItemBase):

@@ -36,4 +36,12 @@ class User(UserBase, table=True):
 
 class UserPublic(SQLModel):
     id: int
+    username: str
+    is_active: bool
+    is_superuser: bool
+    fullname: str | None = None
     created_at: datetime | None = None
+
+class UsersPublic(SQLModel):
+    data: list[UserPublic]
+    count: int

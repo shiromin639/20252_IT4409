@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
+    
+    # VNPay Sandbox Configuration
+    VNPAY_TMN_CODE: str = "TMM_CODE"
+    VNPAY_HASH_SECRET: str = "SECRET"
+    VNPAY_RETURN_URL: str = "http://localhost:5173/payment/vnpay/return"
+    VNPAY_PAYMENT_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

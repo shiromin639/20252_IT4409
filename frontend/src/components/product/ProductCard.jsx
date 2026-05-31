@@ -1,16 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { Heart, ShoppingCart, Star, Zap } from 'lucide-react'
+import { ShoppingCart, Star, Cpu, MemoryStick, HardDrive, Monitor } from 'lucide-react'
 import { addToCartAsync } from '../../store/cartSlice'
-import { useWishlist } from '../../hooks'
 import { formatPrice } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './ProductCard.module.css'
 
 export default function ProductCard({ product, index = 0 }) {
   const dispatch = useDispatch()
-  const { toggle, isWished } = useWishlist()
-  const wished = isWished(product.id)
 
   const handleAddToCart = (e) => {
     e.preventDefault()
@@ -19,87 +16,84 @@ export default function ProductCard({ product, index = 0 }) {
     toast.success(`Đã thêm ${product.name.slice(0, 30)}... vào giỏ hàng`)
   }
 
-  const handleWishlist = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    toggle(product.id)
-    toast(wished ? 'Đã xóa khỏi yêu thích' : '❤️ Đã thêm vào yêu thích')
-  }
+  const discountPercent = product.discount_percent || product.discount || 0
+  const originalPrice = product.original_price || product.originalPrice || product.price
 
   return (
     <Link
       to={`/products/${product.id}`}
       className={styles.card}
-      style={{ animationDelay: `${index * 60}ms` }}
+      style={{ animationDelay: `${index * 40}ms` }}
     >
-      {/* Badges */}
-      <div className={styles.badges}>
-        {product.isNew && <span className={`badge badge-primary ${styles.badge}`}>Mới</span>}
-        {product.isFlashSale && (
-          <span className={`badge badge-danger ${styles.badge}`}>
-            <Zap size={10} /> Sale
-          </span>
-        )}
-      </div>
-
-      {/* Wishlist */}
-      <button
-        className={`${styles.wishBtn} ${wished ? styles.wished : ''}`}
-        onClick={handleWishlist}
-        aria-label="Wishlist"
-      >
-        <Heart size={16} fill={wished ? 'currentColor' : 'none'} />
-      </button>
+      {/* Discount Badge */}
+      {discountPercent > 0 && (
+        <div className={styles.discountBadge}>
+          -{discountPercent}%
+        </div>
+      )}
 
       {/* Image */}
       <div className={styles.imageWrap}>
         <img
-          src={product.image || 'https://via.placeholder.com/400x300?text=Laptop'}
-          alt={product.name}
+          src={product.images?.[0] || product.image_url || product.image || product.specifications?.image_url || product.specs?.image_url || 'https://via.placeholder.com/400x300?text=Laptop'}
+          alt={product.name || 'Product'}
           className={styles.image}
           loading="lazy"
         />
         <div className={styles.imageOverlay}>
           <button className={styles.quickAdd} onClick={handleAddToCart}>
             <ShoppingCart size={15} />
-            Thêm vào giỏ
+            MUA NGAY
           </button>
         </div>
       </div>
 
       {/* Content */}
       <div className={styles.content}>
-        <div className={styles.brand}>{(product.specifications?.brand || product.brand || 'Khác').toUpperCase()}</div>
-        <h3 className={styles.name}>{product.name}</h3>
+        <div className={styles.brand}>{String(product.specifications?.brand || product.brand || 'Khác')}</div>
+        <h3 className={styles.name}>{product.name || 'Sản phẩm'}</h3>
 
-        {/* Specs Pills */}
-        <div className={styles.specPills}>
-          <span className={styles.pill}>{product.specifications?.cpu?.split(' ').slice(0, 3).join(' ') || 'CPU'}</span>
-          <span className={styles.pill}>{product.specifications?.ram || 'RAM'}</span>
-          <span className={styles.pill}>{product.specifications?.storage || 'SSD'}</span>
-        </div>
-
-        {/* Rating */}
-        <div className={styles.meta}>
-          <div className={styles.rating}>
-            <Star size={12} fill="currentColor" className={styles.starIcon} />
-            <span>{product.rating || 5}</span>
-            <span className={styles.reviews}>({product.reviews || 0})</span>
+        {/* Specs Details */}
+        <div className={styles.specList}>
+          <div className={styles.specItem} title={product.specifications?.cpu || 'N/A'}>
+            <Cpu size={12} />
+            <span>{product.specifications?.cpu?.split(' ').slice(0, 4).join(' ') || 'N/A'}</span>
           </div>
-          <span className={styles.sold}>Đã bán {(product.sold || 0).toLocaleString()}</span>
+          <div className={styles.specItem} title={product.specifications?.ram || 'N/A'}>
+            <MemoryStick size={12} />
+            <span>{product.specifications?.ram || 'N/A'}</span>
+          </div>
+          <div className={styles.specItem} title={product.specifications?.storage || 'N/A'}>
+            <HardDrive size={12} />
+            <span>{product.specifications?.storage || 'N/A'}</span>
+          </div>
+          <div className={styles.specItem} title={product.specifications?.gpu || 'N/A'}>
+            <Monitor size={12} />
+            <span>{product.specifications?.gpu || 'N/A'}</span>
+          </div>
         </div>
 
-        {/* Price */}
+        {/* Pricing */}
         <div className={styles.pricing}>
-          <span className={`price-current ${styles.price}`}>
+          {discountPercent > 0 ? (
+            <span className={styles.priceOriginal}>{formatPrice(originalPrice)}</span>
+          ) : (
+            <span className={styles.priceOriginal} style={{ opacity: 0 }}>0</span> // spacing placeholder
+          )}
+          <span className={styles.priceCurrent}>
             {formatPrice(product.price)}
           </span>
-          {(product.discount || 0) > 0 && (
-            <div className={styles.discountRow}>
-              <span className="price-original">{formatPrice(product.originalPrice || product.price)}</span>
-              <span className="price-discount">-{product.discount}%</span>
-            </div>
-          )}
+        </div>
+
+        {/* Meta */}
+        <div className={styles.meta}>
+          <div className={styles.rating}>
+            <Star size={12} fill="currentColor" />
+            <span>{product.rating ?? 5.0}</span>
+          </div>
+          <div className={styles.sold}>
+            Đã bán {(product.total_sold || 0).toLocaleString()}
+          </div>
         </div>
       </div>
     </Link>

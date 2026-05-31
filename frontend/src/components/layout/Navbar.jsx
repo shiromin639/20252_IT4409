@@ -1,17 +1,14 @@
-import { useState, useCallback } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
-import { ShoppingCart, Search, Moon, Sun, Menu, X, User, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react'
+import { ShoppingCart, Search, User, LogOut, LayoutDashboard, Phone, ShieldCheck, Tag, CreditCard, HeadphonesIcon, Newspaper } from 'lucide-react'
 import { selectCartCount } from '../../store/cartSlice'
 import { selectIsAuthenticated, selectUser, selectIsAdmin, logout } from '../../store/authSlice'
-import { useTheme } from '../../context/ThemeContext'
-import { useScrollTop, useDebounce, useClickOutside } from '../../hooks'
+import { useClickOutside } from '../../hooks'
 import toast from 'react-hot-toast'
 import styles from './Navbar.module.css'
 
 export default function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
   const [searchVal, setSearchVal] = useState('')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
@@ -19,8 +16,6 @@ export default function Navbar() {
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const user = useSelector(selectUser)
   const isAdmin = useSelector(selectIsAdmin)
-  const { theme, toggleTheme } = useTheme()
-  const scrolled = useScrollTop()
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
@@ -30,7 +25,6 @@ export default function Navbar() {
     e.preventDefault()
     if (searchVal.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchVal.trim())}`)
-      setSearchOpen(false)
       setSearchVal('')
     }
   }
@@ -42,78 +36,52 @@ export default function Navbar() {
   }
 
   return (
-    <header className={`${styles.header} ${scrolled ? styles.scrolled : ''}`}>
-      <div className={`container ${styles.inner}`}>
+    <header className={styles.header}>
+      <div className={styles.topHeader}>
         {/* Logo */}
         <Link to="/" className={styles.logo}>
           <span className={styles.logoIcon}>⚡</span>
           <span className={styles.logoText}>TechLap</span>
         </Link>
 
-        {/* Nav Links */}
-        <nav className={styles.nav}>
-          <NavLink to="/" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`} end>
-            Trang chủ
-          </NavLink>
-          <NavLink to="/products" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.active : ''}`}>
-            Sản phẩm
-          </NavLink>
-          {['Dell', 'Asus', 'Apple', 'HP', 'Lenovo'].map(b => (
-            <NavLink key={b} to={`/products?brand=${b.toLowerCase()}`} className={styles.navLink}>
-              {b}
-            </NavLink>
-          ))}
-        </nav>
+        {/* Search */}
+        <div className={styles.searchWrap}>
+          <form onSubmit={handleSearch} className={styles.searchForm}>
+            <input
+              type="text"
+              placeholder="Bạn cần tìm laptop gì hôm nay?"
+              value={searchVal}
+              onChange={e => setSearchVal(e.target.value)}
+              className={styles.searchInput}
+            />
+            <button type="submit" className={styles.searchBtn} aria-label="Search">
+              <Search size={18} />
+            </button>
+          </form>
+        </div>
 
         {/* Actions */}
         <div className={styles.actions}>
-          {/* Search */}
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <form onSubmit={handleSearch} className={styles.searchForm}>
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Tìm laptop..."
-                  value={searchVal}
-                  onChange={e => setSearchVal(e.target.value)}
-                  className={styles.searchInput}
-                />
-                <button type="button" onClick={() => setSearchOpen(false)} className={styles.iconBtn}>
-                  <X size={16} />
-                </button>
-              </form>
-            ) : (
-              <button className={styles.iconBtn} onClick={() => setSearchOpen(true)} aria-label="Search">
-                <Search size={18} />
-              </button>
-            )}
-          </div>
+          
+          {/* Hotline */}
+          <a href="tel:18006969" className={styles.actionItem}>
+            <div className={styles.actionIcon}><Phone size={16} /></div>
+            <div className={styles.actionText}>
+              <span className={styles.actionLabel}>Gọi mua hàng</span>
+              <span className={styles.actionValue}>1800.6969</span>
+            </div>
+          </a>
 
-          {/* Theme Toggle */}
-          <button className={styles.iconBtn} onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-
-          {/* Cart */}
-          <Link to="/cart" className={styles.cartBtn} aria-label="Cart">
-            <ShoppingCart size={18} />
-            {cartCount > 0 && <span className={styles.cartBadge}>{cartCount > 99 ? '99+' : cartCount}</span>}
-          </Link>
-
-          {/* User */}
+          {/* User Account */}
           {isAuthenticated ? (
             <div className={styles.userMenu} ref={userMenuRef}>
-              <button
-                className={styles.userBtn}
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-              >
-                <div className={styles.avatar}>
-                  {user?.name?.[0]?.toUpperCase() || 'U'}
+              <div className={styles.actionItem} onClick={() => setUserMenuOpen(!userMenuOpen)}>
+                <div className={styles.actionIcon}><User size={16} /></div>
+                <div className={styles.actionText}>
+                  <span className={styles.actionLabel}>Xin chào,</span>
+                  <span className={styles.actionValue}>{user?.name?.split(' ').pop() || 'User'}</span>
                 </div>
-                <span className={styles.userName}>{user?.name?.split(' ').pop()}</span>
-                <ChevronDown size={14} />
-              </button>
+              </div>
 
               {userMenuOpen && (
                 <div className={styles.dropdown}>
@@ -126,11 +94,11 @@ export default function Navbar() {
                   </div>
                   <div className={styles.dropdownDivider} />
                   <Link to="/profile" className={styles.dropdownItem} onClick={() => setUserMenuOpen(false)}>
-                    <User size={15} /> Tài khoản
+                    <User size={15} /> Tài khoản của tôi
                   </Link>
                   {isAdmin && (
                     <Link to="/admin" className={styles.dropdownItem} onClick={() => setUserMenuOpen(false)}>
-                      <LayoutDashboard size={15} /> Quản trị
+                      <LayoutDashboard size={15} /> Quản trị viên
                     </Link>
                   )}
                   <div className={styles.dropdownDivider} />
@@ -141,57 +109,40 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <Link to="/login" className="btn btn-primary btn-sm">Đăng nhập</Link>
+            <Link to="/login" className={styles.actionItem}>
+              <div className={styles.actionIcon}><User size={16} /></div>
+              <div className={styles.actionText}>
+                <span className={styles.actionLabel}>Đăng nhập</span>
+                <span className={styles.actionValue}>Tài khoản</span>
+              </div>
+            </Link>
           )}
 
-          {/* Mobile Menu Btn */}
-          <button className={`${styles.iconBtn} ${styles.mobileMenuBtn}`} onClick={() => setMobileOpen(!mobileOpen)}>
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Cart */}
+          <Link to="/cart" className={styles.actionItem}>
+            <div className={styles.actionIcon}>
+              <ShoppingCart size={16} />
+              {cartCount > 0 && <span className={styles.cartBadge}>{cartCount > 99 ? '99+' : cartCount}</span>}
+            </div>
+            <div className={styles.actionText}>
+              <span className={styles.actionLabel}>Giỏ hàng</span>
+              <span className={styles.actionValue}>Của bạn</span>
+            </div>
+          </Link>
+
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileOpen && (
-        <div className={styles.mobileMenu}>
-          <div className={styles.mobileSearch}>
-            <form onSubmit={handleSearch}>
-              <div className={styles.mobileSearchInner}>
-                <Search size={16} />
-                <input
-                  type="text"
-                  placeholder="Tìm laptop..."
-                  value={searchVal}
-                  onChange={e => setSearchVal(e.target.value)}
-                />
-              </div>
-            </form>
-          </div>
-          <nav className={styles.mobileNav}>
-            {[
-              { to: '/', label: 'Trang chủ' },
-              { to: '/products', label: 'Tất cả sản phẩm' },
-              { to: '/products?brand=apple', label: 'Apple' },
-              { to: '/products?brand=dell', label: 'Dell' },
-              { to: '/products?brand=asus', label: 'ASUS' },
-              { to: '/products?brand=hp', label: 'HP' },
-              { to: '/products?brand=lenovo', label: 'Lenovo' },
-              { to: '/cart', label: `Giỏ hàng (${cartCount})` },
-            ].map(item => (
-              <NavLink key={item.to} to={item.to} className={styles.mobileNavLink}
-                onClick={() => setMobileOpen(false)}>
-                {item.label}
-              </NavLink>
-            ))}
-            {!isAuthenticated && (
-              <Link to="/login" className={`btn btn-primary ${styles.mobileLoginBtn}`}
-                onClick={() => setMobileOpen(false)}>
-                Đăng nhập
-              </Link>
-            )}
-          </nav>
+      {/* Quick Links Subheader */}
+      <div className={styles.subHeader}>
+        <div className={styles.subHeaderInner}>
+          <Link to="/warranty" className={styles.quickLink}><ShieldCheck size={16} /> Bảo hành</Link>
+          <Link to="/promotions" className={styles.quickLink}><Tag size={16} /> Khuyến mãi</Link>
+          <Link to="/installment" className={styles.quickLink}><CreditCard size={16} /> Trả góp</Link>
+          <Link to="/support" className={styles.quickLink}><HeadphonesIcon size={16} /> Hỗ trợ kỹ thuật</Link>
+          <Link to="/news" className={styles.quickLink}><Newspaper size={16} /> Tin công nghệ</Link>
         </div>
-      )}
+      </div>
     </header>
   )
 }

@@ -9,86 +9,63 @@
   transition: all var(--transition-base);
   animation: fadeIn 0.4s ease both;
   text-decoration: none;
+  height: 100%;
 }
 
 .card:hover {
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   transform: translateY(-4px);
 }
 
 /* Badges */
-.badges {
+.badgeWrap {
   position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
+  top: 10px;
+  left: 10px;
   z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.badge {
-  font-size: 10px !important;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-/* Wishlist */
-.wishBtn {
+.discountBadge {
   position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
+  top: 10px;
+  right: 10px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
   z-index: 2;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  transition: all var(--transition-fast);
-  opacity: 0;
-}
-
-.card:hover .wishBtn {
-  opacity: 1;
-}
-
-.wishBtn:hover, .wished {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background: var(--color-accent-light);
-  opacity: 1 !important;
 }
 
 /* Image */
 .imageWrap {
   position: relative;
-  aspect-ratio: 4/3;
+  aspect-ratio: 1/1;
   overflow: hidden;
-  background: var(--color-surface-2);
+  background: white;
+  padding: 10px;
 }
 
 .image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   transition: transform var(--transition-slow);
 }
 
 .card:hover .image {
-  transform: scale(1.06);
+  transform: scale(1.05);
 }
 
 .imageOverlay {
   position: absolute;
   inset: 0;
-  background: rgba(13, 15, 26, 0.45);
+  background: rgba(0,0,0, 0.05);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -105,17 +82,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 9px 18px;
-  background: white;
-  color: var(--color-text-primary);
-  border-radius: var(--radius-full);
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transform: translateY(8px);
-  transition: transform var(--transition-base);
-  box-shadow: var(--shadow-md);
+  transform: translateY(10px);
+  transition: transform var(--transition-base), background var(--transition-fast);
+  box-shadow: 0 4px 10px rgba(230,0,18,0.3);
 }
 
 .card:hover .quickAdd {
@@ -123,53 +100,85 @@
 }
 
 .quickAdd:hover {
-  background: var(--color-primary);
-  color: white;
+  background: var(--color-primary-dark);
 }
 
 /* Content */
 .content {
-  padding: var(--space-4);
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   flex: 1;
 }
 
 .brand {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--color-primary);
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
 }
 
 .name {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
   color: var(--color-text-primary);
-  line-height: 1.3;
+  line-height: 1.4;
+  margin-bottom: var(--space-3);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  height: 40px; /* Force 2 lines */
 }
 
-/* Spec Pills */
-.specPills {
+/* Specs Details */
+.specList {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 4px;
-  margin: 2px 0;
+  background: var(--color-surface-2);
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+  font-size: 11px;
+  color: var(--color-text-secondary);
 }
 
-.pill {
-  font-size: 10px;
-  padding: 2px 7px;
-  background: var(--color-surface-2);
-  border-radius: var(--radius-full);
-  color: var(--color-text-secondary);
+.specItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.specItem svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* Pricing */
+.pricing {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.priceOriginal {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.priceCurrent {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-primary);
 }
 
 /* Meta */
@@ -177,65 +186,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
 }
 
 .rating {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.starIcon {
   color: #F59E0B;
-}
-
-.reviews {
-  color: var(--color-text-muted);
-  font-weight: 400;
 }
 
 .sold {
   font-size: 11px;
   color: var(--color-text-muted);
-}
-
-/* Pricing */
-.pricing {
-  margin-top: auto;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border-light);
-}
-
-.price {
-  font-size: 17px;
-  display: block;
-  margin-bottom: 2px;
-}
-
-.discountRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-@media (max-width: 640px) {
-  .content {
-    padding: var(--space-3);
-  }
-
-  .name {
-    font-size: 13px;
-  }
-
-  .price {
-    font-size: 15px;
-  }
-
-  .specPills {
-    display: none;
-  }
 }

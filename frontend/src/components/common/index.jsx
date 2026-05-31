@@ -130,3 +130,5 @@ export function SkeletonCard() {
     </div>
   )
 }
+
+export { ErrorBoundary } from './ErrorBoundary'

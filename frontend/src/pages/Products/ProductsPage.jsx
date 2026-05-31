@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import { SlidersHorizontal, X, ChevronDown, Search, Grid, List } from 'lucide-react'
 import { productApi } from '../../services/api'
 import { ramOptions, priceRanges } from '../../constants'
@@ -35,6 +35,30 @@ export default function ProductsPage() {
 
   const debouncedSearch = useDebounce(filters.search, 400)
   const { currentPage, totalPages, paginatedItems, goToPage } = usePagination(products, 12)
+  const location = useLocation()
+
+  // Sync URL changes to local filters (e.g. when searching from Navbar)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const newSearch = params.get('search') || '';
+    const newBrand = params.get('brand') || 'all';
+    const newCategory = params.get('category') || '';
+    
+    console.log('[ProductsPage] location.search changed:', location.search, 'New Search:', newSearch);
+    
+    setFilters(prev => {
+      // Only update if actually different to prevent infinite loops
+      if (prev.search === newSearch && prev.brand === newBrand && prev.category === newCategory) {
+        return prev;
+      }
+      return {
+        ...prev,
+        search: newSearch,
+        brand: newBrand,
+        category: newCategory,
+      }
+    })
+  }, [location.search])
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
@@ -53,7 +77,8 @@ export default function ProductsPage() {
         maxPrice: filters.priceRange?.max !== Infinity ? filters.priceRange?.max : undefined,
         category: filters.category || undefined,
       }
-        const result = await productApi.getAll(params)
+      console.log('[ProductsPage] Fetching products with params:', params);
+      const result = await productApi.getAll(params)
         setProducts(result.data)
         setTotalCount(result.count)
     } finally {
@@ -161,10 +186,10 @@ export default function ProductsPage() {
                 {apiBrands.map(b => (
                   <button
                     key={b}
-                    className={`${styles.filterChip} ${filters.brand === b ? styles.active : ''}`}
-                    onClick={() => updateFilter('brand', b)}
+                    className={`${styles.filterChip} ${String(filters.brand).toLowerCase() === String(b).toLowerCase() ? styles.active : ''}`}
+                    onClick={() => updateFilter('brand', String(b).toLowerCase())}
                   >
-                    {b.toUpperCase()}
+                    {String(b || '').toUpperCase()}
                   </button>
                 ))}
               </div>
@@ -222,7 +247,7 @@ export default function ProductsPage() {
               <div className={styles.activeFilters}>
                 {filters.brand !== 'all' && (
                   <div className={styles.activeFilter}>
-                    {filters.brand.toUpperCase()}
+                    {String(filters.brand || 'all').toUpperCase()}
                     <button onClick={() => updateFilter('brand', 'all')}><X size={12} /></button>
                   </div>
                 )}

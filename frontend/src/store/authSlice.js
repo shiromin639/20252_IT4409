@@ -74,7 +74,7 @@ export const { logout, updateProfile, clearError } = authSlice.actions
 
 export const selectUser = (state) => state.auth.user
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated
-export const selectIsAdmin = (state) => state.auth.user?.is_superuser === true
+export const selectIsAdmin = (state) => state.auth.user?.is_superuser === true || state.auth.user?.role === 'admin'
 export const selectAuthLoading = (state) => state.auth.loading
 export const selectAuthError = (state) => state.auth.error
 

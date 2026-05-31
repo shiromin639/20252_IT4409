@@ -1,7 +1,7 @@
 from app.api.deps import SessionDep
 from fastapi import APIRouter, HTTPException
-from sqlmodel import col, func, select
-
+from sqlmodel import col, func, select, or_
+from sqlalchemy import cast, String
 from app.models.category import Category
 from app.models.product import (
     Product,
@@ -11,7 +11,38 @@ from app.models.product import (
     ProductsPublic,
 )
 
+from fastapi import APIRouter, HTTPException, UploadFile, File
+import cloudinary
+import cloudinary.uploader
+from app.core.config import settings
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+    api_key=settings.CLOUDINARY_API_KEY,
+    api_secret=settings.CLOUDINARY_API_SECRET
+)
+
 router = APIRouter(tags=["product"])
+
+@router.post("/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+    
+    # Read the file content
+    content = await file.read()
+    
+    try:
+        # Upload to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            content,
+            folder="ecommerce_products",
+            resource_type="image"
+        )
+        return {"secure_url": upload_result["secure_url"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/products", response_model=ProductPublic)
@@ -28,21 +59,108 @@ async def create_product(session: SessionDep, product_in: ProductCreate):
     await session.refresh(product)
     return product
 
-
 @router.get("/products", response_model=ProductsPublic)
-async def read_products(session: SessionDep, skip: int = 0, limit: int = 100):
-    count = await session.exec(select(func.count()).select_from(Product))
+async def read_products(
+    session: SessionDep, 
+    skip: int = 0, 
+    limit: int = 100,
+    q: str | None = None,
+    category_id: int | None = None,
+    brand: str | None = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    sort_by: str | None = "newest"
+):
+    query = select(Product).join(Category, isouter=True)
+    
+    if q:
+        import unicodedata
+        def remove_accents(input_str: str) -> str:
+            input_str = input_str.replace('đ', 'd').replace('Đ', 'D')
+            nfkd_form = unicodedata.normalize('NFKD', input_str)
+            return nfkd_form.encode('ASCII', 'ignore').decode('utf-8')
+
+        q_lower = q.lower().strip()
+        q_normalized = remove_accents(q_lower)
+        
+        # Keyword mapping to support broader searches (using normalized keys)
+        keyword_map = {
+            "gaming": ["Gaming Laptop", "gaming"],
+            "game": ["Gaming Laptop", "gaming"],
+            "choi game": ["Gaming Laptop", "gaming"],
+            
+            "office": ["Office Laptop", "office"],
+            "van phong": ["Office Laptop", "office"],
+            
+            "ultrabook": ["Ultrabook", "ultrabook"],
+            
+            "creator": ["Creator Laptop", "creator"],
+            "do hoa": ["Creator Laptop", "creator"],
+            "designer": ["Creator Laptop", "creator"],
+            "design": ["Creator Laptop", "creator"],
+            
+            "lap trinh": ["Office Laptop", "Creator Laptop", "MacBook", "ThinkPad"],
+            "programming": ["Office Laptop", "Creator Laptop", "MacBook", "ThinkPad"],
+            "developer": ["Office Laptop", "Creator Laptop", "MacBook", "ThinkPad"],
+            
+            "hoc tap": ["Office Laptop"],
+            "sinh vien": ["Office Laptop"],
+            "student": ["Office Laptop"],
+            
+            "workstation": ["Workstation", "workstation"],
+            
+            "macbook": ["Apple", "MacBook", "macbook"],
+            "apple": ["Apple", "MacBook", "macbook"]
+        }
+        
+        # Default to searching both the exact lowercase query and the unaccented version
+        search_terms = keyword_map.get(q_normalized, list(set([q_lower, q_normalized])))
+        
+        conditions = []
+        for term in search_terms:
+            conditions.extend([
+                col(Product.name).ilike(f"%{term}%"),
+                col(Product.description).ilike(f"%{term}%"),
+                col(Product.brand).ilike(f"%{term}%"),
+                col(Category.name).ilike(f"%{term}%"),
+                cast(Product.specifications, String).ilike(f"%{term}%")
+            ])
+            
+        query = query.where(or_(*conditions))
+    if category_id is not None:
+        query = query.where(Product.category_id == category_id)
+    if brand:
+        # Use case-insensitive filtering on the top-level brand column
+        query = query.where(func.lower(Product.brand) == func.lower(brand))
+    if min_price is not None:
+        query = query.where(Product.price >= min_price)
+    if max_price is not None:
+        query = query.where(Product.price <= max_price)
+        
+    count_statement = select(func.count()).select_from(query.subquery())
+    count = await session.exec(count_statement)
     count = count.one()
-    statement = (
-        select(Product)
-        .order_by(col(Product.created_at).desc())
-        .offset(skip)
-        .limit(limit)
-    )
-    products = await session.exec(statement)
+    
+    if sort_by == "price_asc":
+        query = query.order_by(col(Product.price).asc())
+    elif sort_by == "price_desc":
+        query = query.order_by(col(Product.price).desc())
+    else:
+        query = query.order_by(col(Product.created_at).desc())
+        
+    query = query.offset(skip).limit(limit)
+    
+    products = await session.exec(query)
     products = products.all()
     products_public = [ProductPublic.model_validate(product) for product in products]
     return ProductsPublic(data=products_public, count=count)
+
+
+@router.get("/brands", response_model=list[str])
+async def read_brands(session: SessionDep):
+    statement = select(Product.brand).distinct()
+    brands = await session.exec(statement)
+    return [b for b in brands.all() if b]
 
 
 @router.get("/categories/{category_id}/products", response_model=ProductsPublic)
@@ -106,3 +224,25 @@ async def delete_product(session: SessionDep, product_id: int):
     await session.delete(product)
     await session.commit()
     return {"message": "Delete product successfully"}
+
+from pydantic import BaseModel
+class IncrementSalesRequest(BaseModel):
+    quantity: int
+
+@router.post("/products/{product_id}/increment-sales")
+async def increment_sales(session: SessionDep, product_id: int, request: IncrementSalesRequest):
+    product = await session.get(Product, product_id)
+    if not product:
+        raise HTTPException(
+            status_code=404, detail=f"Product with id: {product_id} not found"
+        )
+    product.total_sold += request.quantity
+    
+    # Optionally update best_seller flag if it passes a threshold
+    if product.total_sold > 50:
+        product.is_bestseller = True
+        
+    session.add(product)
+    await session.commit()
+    return {"message": "Sales incremented successfully"}
+

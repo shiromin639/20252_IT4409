@@ -1,0 +1,112 @@
+.page {
+  padding: 32px 0 80px 0;
+  min-height: 60vh;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.breadcrumbItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumbIcon {
+  color: #999;
+  margin-top: 2px;
+}
+
+.breadcrumbLink {
+  color: #666;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.breadcrumbLink:hover {
+  color: var(--color-primary);
+}
+
+.breadcrumbCurrent {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.contentWrapper {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.content {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #333;
+}
+
+.content h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 32px 0 16px 0;
+  color: var(--color-text);
+}
+
+.content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 24px 0 12px 0;
+}
+
+.content p {
+  margin-bottom: 16px;
+}
+
+.content ul, .content ol {
+  margin: 0 0 16px 24px;
+  padding: 0;
+}
+
+.content li {
+  margin-bottom: 8px;
+}
+
+.content strong {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+  .contentWrapper {
+    padding: 24px;
+  }
+  
+  .pageTitle {
+    font-size: 24px;
+  }
+  
+  .breadcrumbs {
+    font-size: 13px;
+  }
+}

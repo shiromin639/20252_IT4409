@@ -47,7 +47,7 @@ export default function CartPage() {
             {items.map(item => (
               <div key={item.id} className={styles.item}>
                 <Link to={`/products/${item.id}`} className={styles.itemImage}>
-                  <img src={item.image || 'https://via.placeholder.com/150?text=Laptop'} alt={item.name} />
+                  <img src={item.image_url || item.image || item.specifications?.image_url || item.specs?.image_url || 'https://via.placeholder.com/150?text=Laptop'} alt={item.name || 'Product'} />
                 </Link>
 
                 <div className={styles.itemInfo}>

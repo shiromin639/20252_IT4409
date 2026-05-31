@@ -24,12 +24,12 @@ export default function ProductDetailPage() {
   const [activeImage, setActiveImage] = useState(0)
   const [activeTab, setActiveTab] = useState('specs')
   const [quantity, setQuantity] = useState(1)
-  const [addedToCart, setAddedToCart] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       setActiveImage(0)
+      setQuantity(1)
       try {
         const p = await productApi.getById(id)
         setProduct(p)
@@ -42,8 +42,9 @@ export default function ProductDetailPage() {
           setStock(0)
         }
 
-        const relRes = await productApi.getAll({ brand: p.specifications?.brand || p.brand, limit: 5 })
-        setRelated(relRes.data.filter(x => x.id !== p.id).slice(0, 4))
+        const productBrand = p.brand || p.specifications?.brand || p.specs?.brand || '';
+        const relRes = await productApi.getAll({ brand: productBrand, limit: 6 })
+        setRelated(relRes.data ? relRes.data.filter(x => x.id !== p.id).slice(0, 5) : [])
       } catch {
         navigate('/products')
       } finally {
@@ -62,8 +63,6 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     dispatch(addToCartAsync({ product, quantity }))
     toast.success('Đã thêm vào giỏ hàng!')
-    setAddedToCart(true)
-    setTimeout(() => setAddedToCart(false), 2000)
   }
 
   const handleBuyNow = () => {
@@ -71,18 +70,25 @@ export default function ProductDetailPage() {
     navigate('/cart')
   }
 
-  const specs = product.specifications || {}
+  const specs = product.specifications || product.specs || {}
+  const brand = product.brand || specs.brand || 'Unknown Brand'
+  const displayBrand = typeof brand === 'string' ? brand.toUpperCase() : 'UNKNOWN'
+  
   const specEntries = [
-    ['Thương hiệu', specs.brand || 'N/A'],
-    ['CPU', specs.cpu || 'N/A'],
-    ['RAM', specs.ram || 'N/A'],
+    ['Thương hiệu', brand],
+    ['CPU', specs.cpu || specs.CPU || 'N/A'],
+    ['RAM', specs.ram || specs.RAM || 'N/A'],
     ['Lưu trữ', specs.storage || 'N/A'],
-    ['Màn hình', specs.screen || 'N/A'],
-    ['GPU', specs.gpu || 'N/A'],
+    ['Màn hình', specs.display || specs.screen || 'N/A'],
+    ['GPU', specs.gpu || specs.GPU || 'N/A'],
     ['Pin', specs.battery || 'N/A'],
-    ['Hệ điều hành', specs.os || 'N/A'],
+    ['Hệ điều hành', specs.os || specs.OS || 'N/A'],
     ['Trọng lượng', specs.weight || 'N/A'],
   ].filter(([, val]) => val !== 'N/A')
+
+  const mainImage = product.images?.[activeImage] || product.image_url || product.image || specs.image_url || 'https://via.placeholder.com/600x400?text=Laptop'
+  const discountPercent = product.discount_percent || product.discount || 0
+  const originalPrice = product.original_price || product.originalPrice || product.price
 
   return (
     <div className={styles.page}>
@@ -100,9 +106,9 @@ export default function ProductDetailPage() {
           {/* ── GALLERY ── */}
           <div className={styles.gallery}>
             <div className={styles.mainImage}>
-              <img src={product.images?.[activeImage] || product.image || 'https://via.placeholder.com/600x400?text=Laptop'} alt={product.name} />
-              {(product.discount || 0) > 0 && (
-                <div className={styles.discountBadge}>-{product.discount}%</div>
+              <img src={mainImage} alt={product.name || 'Product'} />
+              {discountPercent > 0 && (
+                <div className={styles.discountBadge}>-{discountPercent}%</div>
               )}
             </div>
             {product.images && product.images.length > 1 && (
@@ -122,47 +128,41 @@ export default function ProductDetailPage() {
 
           {/* ── INFO ── */}
           <div className={styles.info}>
-            <div className={styles.infoBrand}>{product.brand.toUpperCase()}</div>
-            <h1 className={styles.infoName}>{product.name}</h1>
+            <div className={styles.infoBrand}>{displayBrand}</div>
+            <h1 className={styles.infoName}>{product.name || 'Sản phẩm không có tên'}</h1>
 
             {/* Rating */}
             <div className={styles.ratingRow}>
               <StarRating rating={product.rating || 5} size={16} />
               <span className={styles.ratingVal}>{product.rating || 5}</span>
-              <span className={styles.ratingCount}>({product.reviews || 0} đánh giá)</span>
-              <span className={styles.soldCount}>• Đã bán {(product.sold || 0).toLocaleString()}</span>
+              <span className={styles.ratingCount}>({product.reviews_count ?? product.reviews ?? 0} đánh giá)</span>
+              <span className={styles.soldCount}>| Đã bán {(product.total_sold || 0).toLocaleString()}</span>
             </div>
 
             {/* Price */}
             <div className={styles.priceBox}>
-              <span className={styles.currentPrice}>{formatPrice(product.price)}</span>
-              {(product.discount || 0) > 0 && (
+              {discountPercent > 0 && (
                 <div className={styles.priceRow}>
-                  <span className="price-original" style={{ fontSize: 15 }}>
-                    {formatPrice(product.originalPrice || product.price)}
-                  </span>
-                  <span className="price-discount">-{product.discount}%</span>
+                  <span className={styles.priceOriginal}>Giá gốc: <del>{formatPrice(originalPrice)}</del></span>
                 </div>
               )}
-              {product.isFlashSale && (
-                <div className={styles.flashLabel}>
-                  <Zap size={14} /> Flash Sale
-                </div>
-              )}
+              <div className={styles.priceRow}>
+                <span className={styles.currentPrice}>{formatPrice(product.price)}</span>
+              </div>
             </div>
 
             {/* Spec Quick List */}
             <div className={styles.specQuick}>
-              {specEntries.slice(0, 4).map(([key, val]) => (
+              {specEntries.slice(0, 6).map(([key, val]) => (
                 <div key={key} className={styles.specQuickItem}>
-                  <Check size={13} className={styles.specCheck} />
+                  <Check size={14} className={styles.specCheck} />
                   <span className={styles.specKey}>{key}:</span>
                   <span className={styles.specVal}>{val}</span>
                 </div>
               ))}
             </div>
 
-            {/* Stock */}
+            {/* Stock & Quantity */}
             <div className={styles.stockRow}>
               <div className={`${styles.stockDot} ${stock > 5 ? styles.inStock : styles.lowStock}`} />
               <span className={styles.stockText}>
@@ -170,7 +170,6 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
-            {/* Quantity */}
             <div className={styles.qtyRow}>
               <span className={styles.qtyLabel}>Số lượng:</span>
               <div className={styles.qtyControl}>
@@ -191,34 +190,34 @@ export default function ProductDetailPage() {
             {/* CTA Buttons */}
             <div className={styles.ctaButtons}>
               <button
-                className={`btn btn-primary btn-lg ${styles.btnFull} ${addedToCart ? styles.btnAdded : ''}`}
-                onClick={handleAddToCart}
-                disabled={stock === 0}
-              >
-                {addedToCart ? <><Check size={18} /> Đã thêm!</> : <><ShoppingCart size={18} /> Thêm vào giỏ</>}
-              </button>
-              <button
                 className={`btn btn-lg ${styles.btnBuyNow}`}
                 onClick={handleBuyNow}
                 disabled={stock === 0}
               >
-                <Zap size={18} /> Mua ngay
+                MUA NGAY
+              </button>
+              <button
+                className={`btn btn-lg ${styles.btnCart}`}
+                onClick={handleAddToCart}
+                disabled={stock === 0}
+              >
+                <ShoppingCart size={18} /> Thêm vào giỏ
               </button>
               <button
                 className={`btn btn-icon btn-secondary ${wished ? styles.wishedBtn : ''}`}
                 onClick={() => toggle(product.id)}
                 aria-label="Wishlist"
               >
-                <Heart size={18} fill={wished ? 'currentColor' : 'none'} />
+                <Heart size={20} fill={wished ? 'currentColor' : 'none'} />
               </button>
             </div>
 
             {/* Guarantees */}
             <div className={styles.guarantees}>
               {[
-                { icon: <Shield size={15} />, text: 'Bảo hành 12-24 tháng chính hãng' },
-                { icon: <Truck size={15} />, text: 'Giao hàng toàn quốc 1-3 ngày' },
-                { icon: <RotateCcw size={15} />, text: 'Đổi trả trong 15 ngày' },
+                { icon: <Shield size={16} />, text: 'Bảo hành chính hãng 24 tháng' },
+                { icon: <Truck size={16} />, text: 'Giao hàng miễn phí toàn quốc' },
+                { icon: <RotateCcw size={16} />, text: '1 đổi 1 trong 15 ngày' },
               ].map((item, i) => (
                 <div key={i} className={styles.guarantee}>
                   <span className={styles.guaranteeIcon}>{item.icon}</span>
@@ -233,9 +232,9 @@ export default function ProductDetailPage() {
         <div className={styles.tabsSection}>
           <div className={styles.tabs}>
             {[
-              { id: 'specs', label: 'Thông số kỹ thuật' },
               { id: 'desc', label: 'Mô tả sản phẩm' },
-              { id: 'reviews', label: `Đánh giá (${product.reviews || 0})` },
+              { id: 'specs', label: 'Thông số kỹ thuật' },
+              { id: 'reviews', label: `Đánh giá (${product.reviews_count ?? product.reviews ?? 0})` },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -248,6 +247,18 @@ export default function ProductDetailPage() {
           </div>
 
           <div className={styles.tabContent}>
+            {activeTab === 'desc' && (
+              <div className={styles.description}>
+                <p style={{ lineHeight: '1.8' }}>{product.description}</p>
+                <br />
+                <p style={{ lineHeight: '1.8' }}>
+                  Laptop được kiểm tra kỹ lưỡng trước khi xuất xưởng. Đi kèm đầy đủ phụ kiện
+                  trong hộp: Sạc chính hãng, túi đựng, hướng dẫn sử dụng. Hỗ trợ cài đặt
+                  phần mềm văn phòng miễn phí khi mua tại TechLap.
+                </p>
+              </div>
+            )}
+
             {activeTab === 'specs' && (
               <div className={styles.specsTable}>
                 {specEntries.map(([key, val]) => (
@@ -259,37 +270,9 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {activeTab === 'desc' && (
-              <div className={styles.description}>
-                <p>{product.description}</p>
-                <p>
-                  Laptop được kiểm tra kỹ lưỡng trước khi xuất xưởng. Đi kèm đầy đủ phụ kiện
-                  trong hộp: Sạc chính hãng, túi đựng, hướng dẫn sử dụng. Hỗ trợ cài đặt
-                  phần mềm văn phòng miễn phí khi mua tại TechLap.
-                </p>
-              </div>
-            )}
-
             {activeTab === 'reviews' && (
               <div className={styles.reviews}>
-                <div className={styles.reviewSummary}>
-                  <div className={styles.reviewScore}>{product.rating || 5}</div>
-                  <div>
-                    <StarRating rating={product.rating || 5} size={20} />
-                    <p>{product.reviews || 0} đánh giá</p>
-                  </div>
-                </div>
-                {[5, 4, 3, 2, 1].map(star => (
-                  <div key={star} className={styles.reviewBar}>
-                    <span>{star} ★</span>
-                    <div className={styles.barTrack}>
-                      <div
-                        className={styles.barFill}
-                        style={{ width: `${star === 5 ? 70 : star === 4 ? 20 : star === 3 ? 7 : 2}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                <p>Chưa có đánh giá chi tiết nào cho sản phẩm này.</p>
               </div>
             )}
           </div>
@@ -299,7 +282,7 @@ export default function ProductDetailPage() {
         {related.length > 0 && (
           <div className={styles.related}>
             <div className="section-header">
-              <h2 className="section-title">Sản phẩm liên quan</h2>
+              <h2 className="section-title">Sản phẩm tương tự</h2>
             </div>
             <div className="product-grid">
               {related.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}

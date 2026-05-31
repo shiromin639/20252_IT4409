@@ -19,12 +19,16 @@ class OrderStatus(str, Enum):
 
 class OrderBase(SQLModel):
     user_id: str
-    status: OrderStatus = Field(default=OrderStatus.PENDING)
+    status: str = Field(default=OrderStatus.PENDING.value)
     total_amount: Decimal = Field(
         default=Decimal("0"),
         sa_column=Column(Numeric(precision=12, scale=2), nullable=False),
     )
     shipping_address: str | None = Field(default=None)
+    payment_method: str = Field(default="COD")
+    payment_status: str = Field(default="PENDING")
+    payment_transaction_id: str | None = Field(default=None)
+    paid_at: datetime | None = Field(default=None)
 
 
 class Order(OrderBase, table=True):
@@ -51,11 +55,12 @@ class Order(OrderBase, table=True):
 class OrderCreate(SQLModel):
     user_id: str
     shipping_address: str | None = None
+    payment_method: str = "COD"
     items: list["OrderItemCreate"] = []
 
 
 class OrderUpdate(SQLModel):
-    status: OrderStatus | None = None
+    status: str | None = None
     shipping_address: str | None = None
 
 
