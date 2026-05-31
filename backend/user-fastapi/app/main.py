@@ -7,8 +7,9 @@ from app.core.db import engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Automatically create tables on startup
-    SQLModel.metadata.create_all(engine)
+    # Create tables on startup if they don't exist
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
     yield
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)

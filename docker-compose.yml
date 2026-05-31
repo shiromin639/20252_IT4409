@@ -1,0 +1,131 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: techshop-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - techshop-db-data:/var/lib/postgresql/data
+      - ./backend/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  product-service:
+    build:
+      context: ./backend/product-fastapi
+      dockerfile: Dockerfile
+    container_name: techshop-product-service
+    ports:
+      - "8001:8001"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=product
+      - POSTGRES_PASSWORD=product
+      - POSTGRES_DB=product
+      - FASTAPI_PORT=8001
+    depends_on:
+      db:
+        condition: service_healthy
+
+  inventory-service:
+    build:
+      context: ./backend/inventory-fastapi
+      dockerfile: Dockerfile
+    container_name: techshop-inventory-service
+    ports:
+      - "8002:8002"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=inventory
+      - POSTGRES_PASSWORD=inventory
+      - POSTGRES_DB=inventory
+      - FASTAPI_PORT=8002
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cart-service:
+    build:
+      context: ./backend/cart-fastapi
+      dockerfile: Dockerfile
+    container_name: techshop-cart-service
+    ports:
+      - "8003:8003"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=cart
+      - POSTGRES_PASSWORD=cart
+      - POSTGRES_DB=cart
+      - FASTAPI_PORT=8003
+    depends_on:
+      db:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: ./backend/order-fastapi
+      dockerfile: Dockerfile
+    container_name: techshop-order-service
+    ports:
+      - "8004:8004"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=order
+      - POSTGRES_PASSWORD=order
+      - POSTGRES_DB=order
+      - FASTAPI_PORT=8004
+    depends_on:
+      db:
+        condition: service_healthy
+
+  user-service:
+    build:
+      context: ./backend/user-fastapi
+      dockerfile: Dockerfile
+    container_name: techshop-user-service
+    ports:
+      - "8005:8005"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=user
+      - POSTGRES_DB=user
+      - FASTAPI_PORT=8005
+    depends_on:
+      db:
+        condition: service_healthy
+
+  payment-service:
+    build:
+      context: ./backend/payment-fastapi
+      dockerfile: Dockerfile
+    container_name: techshop-payment-service
+    ports:
+      - "8006:8006"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=payment
+      - POSTGRES_PASSWORD=payment
+      - POSTGRES_DB=payment
+      - FASTAPI_PORT=8006
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  techshop-db-data:
