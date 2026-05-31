@@ -25,6 +25,7 @@ public class User {
 
     private String phoneNumber;
 
+    private String address;
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;

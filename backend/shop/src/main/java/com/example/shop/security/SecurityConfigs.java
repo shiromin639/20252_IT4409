@@ -101,4 +101,6 @@ public class SecurityConfigs {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
+
 }

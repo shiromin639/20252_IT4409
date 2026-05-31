@@ -49,10 +49,10 @@ public class CartController {
         CartDTO cartDTO = cartService.updateProductQuantity(userId, productId, quantity);
         return ResponseEntity.ok(cartDTO);
     }
-    @DeleteMapping("/items/{productId}")
-    public ResponseEntity<Void> deleteProductFromCart(@PathVariable Long productId) {
+    @DeleteMapping("/items/{cartItemId}")
+    public ResponseEntity<Void> deleteCartItemFromCart(@PathVariable Long cartItemId) {
         Long userId = authUtil.loggedInUserId();
-        cartService.deleteProductFromCart(userId, productId);
+        cartService.deleteCartItemFromCart(userId, cartItemId);
         return ResponseEntity.noContent().build(); // Trả về 204 No Content là chuẩn REST khi xóa thành công
     }
     @DeleteMapping
