@@ -7,6 +7,7 @@ import { addToCartAsync } from '../../store/cartSlice'
 import { useWishlist } from '../../hooks'
 import { formatPrice } from '../../utils'
 import ProductCard from '../../components/product/ProductCard'
+import ProductReviews from '../../components/product/ProductReviews'
 import { StarRating, LoadingPage } from '../../components/common'
 import toast from 'react-hot-toast'
 import styles from './ProductDetail.module.css'
@@ -133,9 +134,9 @@ export default function ProductDetailPage() {
 
             {/* Rating */}
             <div className={styles.ratingRow}>
-              <StarRating rating={product.rating || 5} size={16} />
-              <span className={styles.ratingVal}>{product.rating || 5}</span>
-              <span className={styles.ratingCount}>({product.reviews_count ?? product.reviews ?? 0} đánh giá)</span>
+              <StarRating rating={product.average_rating ?? product.rating ?? 5} size={16} />
+              <span className={styles.ratingVal}>{product.average_rating ?? product.rating ?? 5}</span>
+              <span className={styles.ratingCount}>({product.total_reviews ?? product.reviews_count ?? 0} đánh giá)</span>
               <span className={styles.soldCount}>| Đã bán {(product.total_sold || 0).toLocaleString()}</span>
             </div>
 
@@ -234,7 +235,7 @@ export default function ProductDetailPage() {
             {[
               { id: 'desc', label: 'Mô tả sản phẩm' },
               { id: 'specs', label: 'Thông số kỹ thuật' },
-              { id: 'reviews', label: `Đánh giá (${product.reviews_count ?? product.reviews ?? 0})` },
+              { id: 'reviews', label: `Đánh giá (${product.total_reviews ?? product.reviews_count ?? 0})` },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -271,9 +272,20 @@ export default function ProductDetailPage() {
             )}
 
             {activeTab === 'reviews' && (
-              <div className={styles.reviews}>
-                <p>Chưa có đánh giá chi tiết nào cho sản phẩm này.</p>
-              </div>
+              <ProductReviews 
+                productId={product.id} 
+                initialStats={{
+                  average_rating: product.average_rating ?? product.rating,
+                  total_reviews: product.total_reviews ?? product.reviews_count
+                }}
+                onStatsUpdate={(stats) => {
+                  setProduct(p => ({
+                    ...p,
+                    average_rating: stats.average_rating,
+                    total_reviews: stats.total_reviews
+                  }))
+                }}
+              />
             )}
           </div>
         </div>

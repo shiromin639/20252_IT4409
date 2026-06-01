@@ -89,7 +89,7 @@ export default function ProductCard({ product, index = 0 }) {
         <div className={styles.meta}>
           <div className={styles.rating}>
             <Star size={12} fill="currentColor" />
-            <span>{product.rating ?? 5.0}</span>
+            <span>{product.average_rating ?? product.rating ?? 5.0} ({product.total_reviews ?? product.reviews_count ?? 0})</span>
           </div>
           <div className={styles.sold}>
             Đã bán {(product.total_sold || 0).toLocaleString()}

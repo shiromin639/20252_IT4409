@@ -31,6 +31,7 @@ function AdminSidebar() {
     { to: '/admin/products', label: 'Sản phẩm', icon: <Package size={17} /> },
     { to: '/admin/orders', label: 'Đơn hàng', icon: <ShoppingBag size={17} /> },
     { to: '/admin/users', label: 'Người dùng', icon: <Users size={17} /> },
+    { to: '/admin/reviews', label: 'Đánh giá', icon: <Star size={17} /> },
   ]
 
   return (
@@ -459,6 +460,115 @@ export function AdminUsers() {
                     <div className={styles.actions}>
                       <button className="btn btn-secondary btn-sm btn-icon" title="Đổi vai trò" onClick={() => toggleRole(u)}>
                         <Edit2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── REVIEWS MANAGEMENT ──
+export function AdminReviews() {
+  const statusOptions = ['all', 'active', 'hidden', 'reported']
+  const [filter, setFilter] = useState('all')
+  const [reviews, setReviews] = useState([])
+  const [stats, setStats] = useState({ total_reviews: 0, average_platform_rating: 0 })
+
+  const fetchReviews = () => {
+    adminApi.getReviews(0, 100).then(res => setReviews(res.data)).catch(console.error)
+    adminApi.getReviewStats().then(res => setStats(res)).catch(console.error)
+  }
+
+  useEffect(() => {
+    fetchReviews()
+  }, [])
+
+  const filtered = filter === 'all' ? reviews : reviews.filter(r => r.review_status === filter)
+
+  const toggleStatus = async (review) => {
+    const newStatus = review.review_status === 'active' ? 'hidden' : 'active'
+    try {
+      await adminApi.updateReviewStatus(review.id, newStatus)
+      setReviews(reviews.map(r => r.id === review.id ? { ...r, review_status: newStatus } : r))
+      toast.success('Đã cập nhật trạng thái')
+    } catch (err) {
+      toast.error('Có lỗi xảy ra')
+    }
+  }
+
+  return (
+    <div className={styles.adminContent}>
+      <div className={styles.contentHeader}>
+        <h1 className={styles.contentTitle}>Quản lý đánh giá</h1>
+      </div>
+
+      <div className={styles.statsGrid} style={{ marginBottom: '2rem' }}>
+        <StatCard label="Tổng số đánh giá" value={stats.total_reviews} icon={<Star size={20} />} color="warning" />
+        <StatCard label="Điểm trung bình" value={stats.average_platform_rating} icon={<BarChart2 size={20} />} color="primary" />
+      </div>
+
+      <div className={styles.tableCard}>
+        <div className={styles.tableHeader}>
+          <div className={styles.statusTabs}>
+            {statusOptions.map(s => {
+              const labels = { all: 'Tất cả', active: 'Hiển thị', hidden: 'Đã ẩn', reported: 'Bị báo cáo' }
+              return (
+                <button
+                  key={s}
+                  className={`${styles.statusTab} ${filter === s ? styles.statusTabActive : ''}`}
+                  onClick={() => setFilter(s)}
+                >
+                  {labels[s]}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Sản phẩm ID</th>
+                <th>Khách hàng</th>
+                <th>Điểm</th>
+                <th>Nội dung</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => (
+                <tr key={r.id}>
+                  <td>#{r.product_id}</td>
+                  <td>#{r.user_id}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', color: '#f59e0b', gap: '4px' }}>
+                      {r.rating} <Star size={14} fill="currentColor" />
+                    </div>
+                  </td>
+                  <td style={{ maxWidth: 300 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{r.title}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.comment}</div>
+                  </td>
+                  <td>
+                    <span className={`badge ${r.review_status === 'active' ? 'badge-success' : 'badge-danger'}`}>
+                      {r.review_status === 'active' ? 'Hiển thị' : 'Đã ẩn'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.actions}>
+                      <button 
+                        className={`btn btn-sm ${r.review_status === 'active' ? 'btn-danger' : 'btn-success'}`}
+                        onClick={() => toggleStatus(r)}
+                      >
+                        {r.review_status === 'active' ? 'Ẩn' : 'Hiện'}
                       </button>
                     </div>
                   </td>

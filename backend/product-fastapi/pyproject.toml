@@ -17,4 +17,5 @@ dependencies = [
     "cloudinary>=1.41.0",
     "python-multipart>=0.0.12",
     "faker>=33.0.0",
+    "pyjwt>=2.8.0",
 ]

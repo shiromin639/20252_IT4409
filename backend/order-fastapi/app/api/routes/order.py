@@ -146,6 +146,18 @@ async def read_order_items(session: SessionDep, order_id: int):
     items = session.exec(statement).all()
     return items
 
+@router.get("/orders/check-purchase/internal")
+async def check_purchase(session: SessionDep, user_id: int, product_id: int):
+    statement = (
+        select(Order)
+        .join(OrderItem, Order.id == OrderItem.order_id)
+        .where(Order.user_id == user_id)
+        .where(OrderItem.product_id == product_id)
+        .where(Order.payment_status == "PAID")
+    )
+    result = session.exec(statement).first()
+    return {"purchased": result is not None}
+
 
 @router.put("/orders/{order_id}", response_model=OrderPublic)
 async def update_order(

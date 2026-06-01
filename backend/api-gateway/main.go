@@ -60,6 +60,7 @@ func main() {
 		r.Mount("/products", productProxy)
 		r.Mount("/categories", productProxy)
 		r.Mount("/brands", productProxy)
+		r.Mount("/reviews", productProxy)
 		r.Mount("/static", productProxy)
 		r.Mount("/upload-image", productProxy)
 
@@ -75,6 +76,8 @@ func main() {
 		r.Mount("/register", userProxy)
 		r.Mount("/profile", userProxy)
 
+		// Admin routes
+		r.Mount("/admin/reviews", productProxy)
 		r.Mount("/admin", orderProxy)
 	})
 

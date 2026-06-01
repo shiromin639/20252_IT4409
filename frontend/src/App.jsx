@@ -21,6 +21,7 @@ import AdminDashboard, {
   AdminProducts,
   AdminOrders,
   AdminUsers,
+  AdminReviews,
 } from './pages/Admin/AdminDashboard'
 
 // Static Pages (Information & Policies)
@@ -123,6 +124,7 @@ export default function App() {
               <Route path="products" element={<AdminProducts />} />
               <Route path="orders" element={<AdminOrders />} />
               <Route path="users" element={<AdminUsers />} />
+              <Route path="reviews" element={<AdminReviews />} />
             </Route>
 
             {/* Fallback */}

@@ -17,6 +17,7 @@ from sqlmodel import (
 
 if TYPE_CHECKING:
     from .category import Category
+    from .review import Review
 
 
 class ProductBase(SQLModel):
@@ -32,8 +33,8 @@ class ProductBase(SQLModel):
     original_price: Decimal | None = Field(
         default=None, sa_column=Column(Numeric(precision=12, scale=2), nullable=True)
     )
-    rating: float = Field(default=5.0)
-    reviews_count: int = Field(default=0)
+    average_rating: float = Field(default=5.0)
+    total_reviews: int = Field(default=0)
     discount_percent: int = Field(default=0)
     is_featured: bool = Field(default=False)
     is_bestseller: bool = Field(default=False)
@@ -58,6 +59,7 @@ class Product(ProductBase, table=True):
         ),
     )
     category: "Category" = Relationship(back_populates="products")
+    reviews: list["Review"] = Relationship(back_populates="product")
 
 
 class ProductCreate(ProductBase):
@@ -73,8 +75,8 @@ class ProductUpdate(SQLModel):
     image_url: str | None = Field(default=None, max_length=512)
     price: Decimal | None = Field(default=None, gt=0)
     original_price: Decimal | None = None
-    rating: float | None = None
-    reviews_count: int | None = None
+    average_rating: float | None = None
+    total_reviews: int | None = None
     discount_percent: int | None = None
     is_featured: bool | None = None
     is_bestseller: bool | None = None
