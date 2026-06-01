@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 from sqlmodel import SQLModel
 
-from app.models import Category, Product, Review
+from app.models import Category, Product, Review, Wishlist, WishlistItem
 from app.core.config import settings
 
 target_metadata = SQLModel.metadata

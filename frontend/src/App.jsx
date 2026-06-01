@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { selectIsAuthenticated } from './store/authSlice'
 import { fetchCart } from './store/cartSlice'
+import { fetchWishlist } from './store/wishlistSlice'
 import { ThemeProvider } from './context/ThemeContext'
 import Layout from './components/layout/Layout'
 import { ProtectedRoute, ErrorBoundary } from './components/common'
@@ -13,6 +14,7 @@ import ProductsPage from './pages/Products/ProductsPage'
 import ProductDetailPage from './pages/ProductDetail/ProductDetailPage'
 import CartPage from './pages/Cart/CartPage'
 import CheckoutPage from './pages/Checkout/CheckoutPage'
+import WishlistPage from './pages/Wishlist/WishlistPage'
 import AuthPage from './pages/Auth/AuthPage'
 import ProfilePage from './pages/Profile/ProfilePage'
 import PaymentReturnPage from './pages/Payment/PaymentReturnPage'
@@ -48,6 +50,7 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated) {
       dispatch(fetchCart())
+      dispatch(fetchWishlist())
     }
   }, [dispatch, isAuthenticated])
 
@@ -98,6 +101,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/wishlist"
+                element={
+                  <ProtectedRoute>
+                    <WishlistPage />
                   </ProtectedRoute>
                 }
               />

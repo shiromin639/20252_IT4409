@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str
     SENTRY_DSN: HttpUrl | None = None
-    SECRET_KEY: str = "T94CQVQ8OQ97IBECDGRH2BHXI9VHJO0O" # Same as user-service for token validation
+    SECRET_KEY: str = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7" # Same as user-service for token validation
     POSTGRES_SERVER: str
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str

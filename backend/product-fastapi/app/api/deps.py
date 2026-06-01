@@ -2,7 +2,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import Annotated, Any
+from typing import Annotated, Any, AsyncGenerator
 from app.core.db import engine
 from app.core.config import settings
 

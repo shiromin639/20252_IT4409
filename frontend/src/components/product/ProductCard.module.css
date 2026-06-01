@@ -203,3 +203,30 @@
   font-size: 11px;
   color: var(--color-text-muted);
 }
+
+/* Wishlist */
+.wishlistBtn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+}
+.wishlistBtn:hover {
+  color: var(--color-primary);
+  transform: scale(1.1);
+}
+.wishlistBtnActive {
+  color: var(--color-primary);
+}

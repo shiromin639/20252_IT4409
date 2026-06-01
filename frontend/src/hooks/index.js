@@ -69,16 +69,25 @@ export function useScrollTop() {
 }
 
 // Wishlist hook
+import { useSelector, useDispatch } from 'react-redux'
+import { toggleWishlistAsync, selectWishlistItems } from '../store/wishlistSlice'
+import { useNavigate } from 'react-router-dom'
+
 export function useWishlist() {
-  const [wishlist, setWishlist] = useLocalStorage('wishlist', [])
+  const dispatch = useDispatch()
+  const wishlist = useSelector(selectWishlistItems)
+  const isAuth = useSelector(state => !!state.auth.user)
+  const navigate = useNavigate()
 
   const toggle = useCallback((id) => {
-    setWishlist(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    )
-  }, [])
+    if (!isAuth) {
+      navigate('/login')
+      return
+    }
+    dispatch(toggleWishlistAsync(id))
+  }, [dispatch, isAuth, navigate])
 
-  const isWished = useCallback((id) => wishlist.includes(id), [wishlist])
+  const isWished = useCallback((id) => wishlist.some(i => i.id === id), [wishlist])
 
   return { wishlist, toggle, isWished }
 }

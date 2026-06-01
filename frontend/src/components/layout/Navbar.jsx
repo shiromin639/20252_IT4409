@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
-import { ShoppingCart, Search, User, LogOut, LayoutDashboard, Phone, ShieldCheck, Tag, CreditCard, HeadphonesIcon, Newspaper } from 'lucide-react'
+import { ShoppingCart, Search, User, LogOut, LayoutDashboard, Phone, ShieldCheck, Tag, CreditCard, HeadphonesIcon, Newspaper, Heart } from 'lucide-react'
 import { selectCartCount } from '../../store/cartSlice'
+import { selectWishlistCount } from '../../store/wishlistSlice'
 import { selectIsAuthenticated, selectUser, selectIsAdmin, logout } from '../../store/authSlice'
 import { useClickOutside } from '../../hooks'
 import toast from 'react-hot-toast'
@@ -13,6 +14,7 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   const cartCount = useSelector(selectCartCount)
+  const wishlistCount = useSelector(selectWishlistCount)
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const user = useSelector(selectUser)
   const isAdmin = useSelector(selectIsAdmin)
@@ -117,6 +119,18 @@ export default function Navbar() {
               </div>
             </Link>
           )}
+
+          {/* Wishlist */}
+          <Link to="/wishlist" className={styles.actionItem}>
+            <div className={styles.actionIcon}>
+              <Heart size={16} />
+              {wishlistCount > 0 && <span className={styles.cartBadge}>{wishlistCount > 99 ? '99+' : wishlistCount}</span>}
+            </div>
+            <div className={styles.actionText}>
+              <span className={styles.actionLabel}>Yêu thích</span>
+              <span className={styles.actionValue}>Đã lưu</span>
+            </div>
+          </Link>
 
           {/* Cart */}
           <Link to="/cart" className={styles.actionItem}>

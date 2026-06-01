@@ -61,6 +61,7 @@ func main() {
 		r.Mount("/categories", productProxy)
 		r.Mount("/brands", productProxy)
 		r.Mount("/reviews", productProxy)
+		r.Mount("/wishlist", productProxy)
 		r.Mount("/static", productProxy)
 		r.Mount("/upload-image", productProxy)
 

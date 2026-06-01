@@ -20,6 +20,22 @@ export const adminApi = {
     return apiClient.get('/admin/revenue-by-brand');
   },
 
+  getReviews: async (skip = 0, limit = 100) => {
+    return apiClient.get('/admin/reviews', { params: { skip, limit } });
+  },
+
+  getReviewStats: async () => {
+    return apiClient.get('/admin/reviews/stats');
+  },
+
+  updateReviewStatus: async (reviewId, status) => {
+    return apiClient.patch(`/admin/reviews/${reviewId}/status`, { status });
+  },
+
+  getWishlistStats: async () => {
+    return apiClient.get('/admin/wishlist/stats');
+  },
+
   /**
    * Gets all users (Admin only).
    */

@@ -1,19 +1,29 @@
 import { Link } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { ShoppingCart, Star, Cpu, MemoryStick, HardDrive, Monitor } from 'lucide-react'
+import { ShoppingCart, Star, Cpu, MemoryStick, HardDrive, Monitor, Heart } from 'lucide-react'
 import { addToCartAsync } from '../../store/cartSlice'
+import { useWishlist } from '../../hooks'
 import { formatPrice } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './ProductCard.module.css'
 
 export default function ProductCard({ product, index = 0 }) {
   const dispatch = useDispatch()
+  const { isWished, toggle } = useWishlist()
+  
+  const wished = isWished(product.id)
 
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
     dispatch(addToCartAsync({ product }))
-    toast.success(`Đã thêm ${product.name.slice(0, 30)}... vào giỏ hàng`)
+    // Note: addToCartAsync shows toast
+  }
+
+  const handleToggleWishlist = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    toggle(product.id)
   }
 
   const discountPercent = product.discount_percent || product.discount || 0
@@ -31,6 +41,15 @@ export default function ProductCard({ product, index = 0 }) {
           -{discountPercent}%
         </div>
       )}
+
+      {/* Wishlist Button */}
+      <button 
+        className={`${styles.wishlistBtn} ${wished ? styles.wishlistBtnActive : ''}`} 
+        onClick={handleToggleWishlist}
+        aria-label="Toggle Wishlist"
+      >
+        <Heart size={16} fill={wished ? 'currentColor' : 'none'} />
+      </button>
 
       {/* Image */}
       <div className={styles.imageWrap}>

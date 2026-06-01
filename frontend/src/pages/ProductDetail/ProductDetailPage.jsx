@@ -205,11 +205,11 @@ export default function ProductDetailPage() {
                 <ShoppingCart size={18} /> Thêm vào giỏ
               </button>
               <button
-                className={`btn btn-icon btn-secondary ${wished ? styles.wishedBtn : ''}`}
+                className={`btn btn-lg btn-secondary ${wished ? styles.wishedBtn : ''}`}
                 onClick={() => toggle(product.id)}
                 aria-label="Wishlist"
               >
-                <Heart size={20} fill={wished ? 'currentColor' : 'none'} />
+                <Heart size={18} fill={wished ? 'currentColor' : 'none'} /> Yêu thích
               </button>
             </div>
 

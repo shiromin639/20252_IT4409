@@ -93,23 +93,26 @@ export function AdminHome() {
   const [dailyRevenue, setDailyRevenue] = useState([])
   const [bestSellers, setBestSellers] = useState([])
   const [revenueByBrand, setRevenueByBrand] = useState([])
+  const [wishlistStats, setWishlistStats] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true)
-        const [statsRes, dailyRes, sellersRes, brandRes] = await Promise.all([
+        const [statsRes, dailyRes, sellersRes, brandRes, wishlistRes] = await Promise.all([
           adminApi.getStats(),
           adminApi.getDailyRevenue(),
           adminApi.getBestSellers(),
-          adminApi.getRevenueByBrand()
+          adminApi.getRevenueByBrand(),
+          adminApi.getWishlistStats()
         ])
         
         setStats(statsRes.data || statsRes)
         setDailyRevenue(dailyRes.data || dailyRes)
         setBestSellers(sellersRes.data || sellersRes)
         setRevenueByBrand(brandRes.data || brandRes)
+        setWishlistStats(wishlistRes.data || wishlistRes)
       } catch (err) {
         console.error("Failed to load analytics", err)
         toast.error("Lỗi khi tải dữ liệu thống kê")
@@ -187,6 +190,27 @@ export function AdminHome() {
                 <Bar dataKey="sold" name="Đã bán" fill="var(--color-success)" radius={[0, 4, 4, 0]} barSize={15}>
                   {bestSellers.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.recentGrid} style={{ marginTop: '2rem' }}>
+        <div className={styles.recentCard} style={{ gridColumn: 'span 2' }}>
+          <h3 className={styles.recentTitle}>Sản phẩm yêu thích nhiều nhất</h3>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <BarChart data={wishlistStats} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" />
+                <XAxis type="number" stroke="#6b7280" fontSize={12} hide />
+                <YAxis dataKey="product_name" type="category" stroke="#6b7280" fontSize={11} width={100} tickFormatter={(value) => value?.length > 15 ? value.substring(0, 15) + '...' : value} />
+                <Tooltip cursor={{fill: '#f3f4f6'}} formatter={(value) => [`${value} lượt`, 'Yêu thích']} />
+                <Bar dataKey="wishlisted_count" name="Yêu thích" fill="#ec4899" radius={[0, 4, 4, 0]} barSize={15}>
+                  {wishlistStats.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
                   ))}
                 </Bar>
               </BarChart>
