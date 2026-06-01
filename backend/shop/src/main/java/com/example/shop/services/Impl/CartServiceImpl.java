@@ -95,7 +95,8 @@ public class CartServiceImpl implements CartService {
                 .orElseThrow(() -> new RuntimeException("Product not found in your cart"));
 
         if (quantity <= 0) {
-            // Dùng orphanRemoval: chỉ cần remove khỏi collection, KHÔNG gọi repository.delete()
+            // Dùng orphanRemoval: chỉ cần remove khỏi collection, KHÔNG gọi
+            // repository.delete()
             cart.getCartItems().remove(cartItem);
         } else {
             if (cartItem.getProduct().getQuantity() < quantity) {
@@ -116,7 +117,8 @@ public class CartServiceImpl implements CartService {
         CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new ResourceNotFoundException("CartItem", "id", cartItemId));
 
-        // Kiểm tra cartItem có thuộc cart của user này không (tránh user A xóa item của user B)
+        // Kiểm tra cartItem có thuộc cart của user này không (tránh user A xóa item của
+        // user B)
         if (!cartItem.getCart().getCartId().equals(cart.getCartId())) {
             throw new IllegalArgumentException("This cart item does not belong to your cart");
         }
@@ -186,7 +188,11 @@ public class CartServiceImpl implements CartService {
             pDto.setProductId(p.getProductId());
             pDto.setProductName(p.getProductName());
             pDto.setImage(p.getImage());
-
+            pDto.setDescription(p.getDescription());
+            pDto.setQuantity(p.getQuantity()); // This is the stock quantity of the product
+            pDto.setPrice(p.getPrice());
+            pDto.setDiscount(p.getDiscount());
+            pDto.setSpecialPrice(p.getSpecialPrice());
             itemDto.setProduct(pDto);
             itemDTOs.add(itemDto);
         }

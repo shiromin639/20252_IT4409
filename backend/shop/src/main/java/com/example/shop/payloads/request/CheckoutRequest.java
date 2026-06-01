@@ -4,13 +4,15 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class OrderRequest {
+public class CheckoutRequest {
     @NotBlank(message = "Shipping address is required")
     private String shippingAddress;
 
     private String phoneNumber;
 
-    private String paymentMethod; // COD, BANK_TRANSFER, etc. — mặc định COD
+    private String paymentMethod; // COD, SEPAY
+
+    private String couponCode;
 
     private String notes;
 }

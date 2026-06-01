@@ -23,6 +23,9 @@ public class OrderDTO {
     private String phoneNumber;
     private String paymentMethod;
     private String notes;
+    private String couponCode;
+    private BigDecimal couponDiscount;
+    private String paymentUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

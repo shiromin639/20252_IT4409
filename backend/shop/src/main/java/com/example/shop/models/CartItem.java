@@ -1,6 +1,5 @@
 package com.example.shop.models;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -30,11 +29,12 @@ public class CartItem {
     private double discount;
     private double productPrice;
 
-    // equals/hashCode dựa trên ID — an toàn với JPA (không circular, không thay đổi hash)
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         CartItem cartItem = (CartItem) o;
         return cartItemId != null && cartItemId.equals(cartItem.cartItemId);
     }

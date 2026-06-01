@@ -43,6 +43,10 @@ public class Order {
 
     private String notes;
 
+    private String couponCode;
+
+    private Double couponDiscount = 0.0;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
