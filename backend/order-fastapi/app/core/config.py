@@ -15,11 +15,20 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = ""
     POSTGRES_DB: str = ""
     
+    REDIS_URL: str | None = None
+    
     # VNPay Sandbox Configuration
     VNPAY_TMN_CODE: str
     VNPAY_HASH_SECRET: str
     VNPAY_RETURN_URL: str
     VNPAY_PAYMENT_URL: str
+
+    # SMTP Configuration
+    SMTP_HOST: str = "sandbox.smtp.mailtrap.io"
+    SMTP_PORT: int = 2525
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAIL_FROM: str = "noreply@techlap.local"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -37,3 +37,8 @@ class OrderItemCreate(SQLModel):
 class OrderItemPublic(OrderItemBase):
     id: int
     order_id: int
+
+class OrderItemDetail(OrderItemPublic):
+    product_name: str
+    image_url: str
+

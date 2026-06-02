@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { User, Package, Lock, Edit2, Check, X } from 'lucide-react'
 import { selectUser, updateProfile } from '../../store/authSlice'
@@ -37,9 +38,10 @@ export default function ProfilePage() {
                 total: order.total_amount,
                 items: items.map(i => ({
                   id: i.id || i.product_id,
-                  name: `Sản phẩm #${i.product_id}`,
+                  name: i.product_name || `Sản phẩm #${i.product_id}`,
                   qty: i.quantity,
-                  price: i.unit_price || 0
+                  price: i.unit_price || 0,
+                  image_url: i.image_url
                 }))
               }
             })
@@ -181,18 +183,31 @@ export default function ProfilePage() {
                             </div>
                             <span className={`badge badge-${status.color}`}>{status.label}</span>
                           </div>
-                          <div className={styles.orderItems}>
-                            {order.items.map(item => (
-                              <div key={item.id} className={styles.orderItem}>
-                                <span>{item.name}</span>
-                                <span>x{item.qty}</span>
-                                <span>{formatPrice(item.price)}</span>
-                              </div>
+                          
+                          <div style={{ padding: '16px', display: 'flex', gap: '12px', overflowX: 'auto' }}>
+                            {order.items.slice(0, 4).map(item => (
+                              <img 
+                                key={item.id} 
+                                src={item.image_url || 'https://via.placeholder.com/60'} 
+                                alt={item.name} 
+                                style={{ width: '60px', height: '60px', objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: '8px' }}
+                              />
                             ))}
+                            {order.items.length > 4 && (
+                              <div style={{ width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-background-alt)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '14px', fontWeight: '600' }}>
+                                +{order.items.length - 4}
+                              </div>
+                            )}
                           </div>
-                          <div className={styles.orderTotal}>
-                            <span>Tổng cộng:</span>
-                            <span className={styles.orderTotalPrice}>{formatPrice(order.total)}</span>
+                          
+                          <div className={styles.orderTotal} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>Tổng cộng: </span>
+                              <span className={styles.orderTotalPrice} style={{ fontSize: '18px' }}>{formatPrice(order.total)}</span>
+                            </div>
+                            <Link to={`/orders/${order.id}`} className="btn btn-outline btn-sm">
+                              Xem chi tiết
+                            </Link>
                           </div>
                         </div>
                       )

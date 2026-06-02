@@ -6,6 +6,7 @@ from app.models.review import (
 )
 from app.models.product import Product
 from app.core.review_service import ReviewService
+from app.core.cache import get_cache, set_cache, invalidate_cache
 
 router = APIRouter(tags=["review"])
 
@@ -43,6 +44,11 @@ async def create_review(
     # Update product stats
     await ReviewService.update_product_rating(session, review_in.product_id)
 
+    # Invalidate caches
+    await invalidate_cache("admin:review_stats")
+    await invalidate_cache(f"product:{review_in.product_id}:rating_summary")
+    await invalidate_cache(f"product:{review_in.product_id}")
+
     return review
 
 @router.get("/products/{product_id}/reviews", response_model=ReviewsPublic)
@@ -64,6 +70,11 @@ async def read_product_reviews(session: SessionDep, product_id: int, skip: int =
 
 @router.get("/products/{product_id}/rating-summary", response_model=RatingSummary)
 async def get_rating_summary(session: SessionDep, product_id: int):
+    cache_key = f"product:{product_id}:rating_summary"
+    cached = await get_cache(cache_key)
+    if cached:
+        return RatingSummary(**cached)
+
     # Get total reviews and average from Product
     product = await session.get(Product, product_id)
     if not product:
@@ -86,11 +97,14 @@ async def get_rating_summary(session: SessionDep, product_id: int):
         percentage = (count / total * 100) if total > 0 else 0.0
         breakdown[i] = round(percentage, 1)
 
-    return RatingSummary(
+    summary = RatingSummary(
         average_rating=product.average_rating,
         total_reviews=product.total_reviews,
         rating_breakdown=breakdown
     )
+    
+    await set_cache(cache_key, summary.model_dump(mode="json"), ttl=600)
+    return summary
 
 @router.put("/reviews/{review_id}", response_model=ReviewPublic)
 async def update_review(
@@ -112,6 +126,10 @@ async def update_review(
 
     if "rating" in update_dict:
         await ReviewService.update_product_rating(session, review.product_id)
+        
+    await invalidate_cache("admin:review_stats")
+    await invalidate_cache(f"product:{review.product_id}:rating_summary")
+    await invalidate_cache(f"product:{review.product_id}")
 
     return review
 
@@ -128,6 +146,10 @@ async def delete_review(session: SessionDep, current_user_id: CurrentUserId, rev
     await session.commit()
 
     await ReviewService.update_product_rating(session, product_id)
+
+    await invalidate_cache("admin:review_stats")
+    await invalidate_cache(f"product:{product_id}:rating_summary")
+    await invalidate_cache(f"product:{product_id}")
 
     return {"message": "Review deleted successfully"}
 
@@ -159,14 +181,27 @@ async def admin_update_review_status(
     await session.commit()
     
     await ReviewService.update_product_rating(session, review.product_id)
+    
+    await invalidate_cache("admin:review_stats")
+    await invalidate_cache(f"product:{review.product_id}:rating_summary")
+    await invalidate_cache(f"product:{review.product_id}")
+    
     return {"message": "Status updated successfully"}
 
 @router.get("/admin/reviews/stats")
 async def admin_review_stats(session: SessionDep):
+    cache_key = "admin:review_stats"
+    cached = await get_cache(cache_key)
+    if cached:
+        return cached
+
     total_reviews = (await session.exec(select(func.count()).select_from(Review))).one()
     avg_rating = (await session.exec(select(func.avg(Review.rating)))).one()
     
-    return {
+    data = {
         "total_reviews": total_reviews,
         "average_platform_rating": round(float(avg_rating or 0.0), 2)
     }
+    
+    await set_cache(cache_key, data, ttl=300)
+    return data

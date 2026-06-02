@@ -18,6 +18,17 @@ class ProductService:
             raise ValueError(f"Failed to verify price for product {product_id}: {str(e)}")
 
     @classmethod
+    def get_product(cls, product_id: int) -> dict | None:
+        url = f"{cls.BASE_URL}/{product_id}"
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req) as response:
+                return json.loads(response.read().decode())
+        except Exception as e:
+            print(f"Warning: Failed to fetch product {product_id}: {str(e)}")
+            return None
+
+    @classmethod
     def increment_sales(cls, product_id: int, quantity: int):
         url = f"{cls.BASE_URL}/{product_id}/increment-sales"
         payload = json.dumps({"quantity": quantity}).encode("utf-8")

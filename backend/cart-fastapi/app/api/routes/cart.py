@@ -121,7 +121,7 @@ async def remove_cart_item(session: SessionDep, user_id: str, product_id: int):
 
 
 @router.delete("/carts/{user_id}")
-async def clear_cart(session: SessionDep, user_id: str):
+async def delete_cart(session: SessionDep, user_id: str):
     statement = select(Cart).where(Cart.user_id == user_id)
     cart = session.exec(statement).first()
     if not cart:
@@ -129,4 +129,19 @@ async def clear_cart(session: SessionDep, user_id: str):
 
     session.delete(cart)
     session.commit()
-    return {"message": "Cart cleared"}
+    return {"message": "Cart deleted"}
+
+
+@router.delete("/carts/{user_id}/items")
+async def clear_cart_items(session: SessionDep, user_id: str):
+    statement = select(Cart).where(Cart.user_id == user_id)
+    cart = session.exec(statement).first()
+    if not cart:
+        return {"message": "Cart items cleared"}
+
+    statement = select(CartItem).where(CartItem.cart_id == cart.id)
+    items = session.exec(statement).all()
+    for item in items:
+        session.delete(item)
+    session.commit()
+    return {"message": "Cart items cleared"}

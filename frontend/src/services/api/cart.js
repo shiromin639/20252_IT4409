@@ -45,6 +45,6 @@ export const cartApi = {
    * Clears the entire cart.
    */
   clearCart: async (userId) => {
-    return apiClient.delete(`/carts/${userId}`);
+    return apiClient.delete(`/carts/${userId}/items`);
   }
 };

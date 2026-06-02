@@ -45,6 +45,7 @@ func main() {
 	cartProxy := createProxy(getEnvOrDefault("CART_SERVICE_URL", "http://localhost:8003"))
 	orderProxy := createProxy(getEnvOrDefault("ORDER_SERVICE_URL", "http://localhost:8004"))
 	userProxy := createProxy(getEnvOrDefault("USER_SERVICE_URL", "http://localhost:8005"))
+	emailProxy := createProxy(getEnvOrDefault("EMAIL_SERVICE_URL", "http://localhost:8006"))
 
 	// Middleware to rewrite /v1 prefix
 	rewriteV1 := func(next http.Handler) http.Handler {
@@ -79,6 +80,7 @@ func main() {
 
 		// Admin routes
 		r.Mount("/admin/reviews", productProxy)
+		r.Mount("/admin/emails", emailProxy)
 		r.Mount("/admin", orderProxy)
 	})
 

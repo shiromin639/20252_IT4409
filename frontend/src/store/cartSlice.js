@@ -75,6 +75,10 @@ export const removeFromCartAsync = createAsyncThunk(
       try {
         await cartApi.removeItem(user.id, productId)
       } catch (err) {
+        if (err.message === 'Item not found in cart' || err.message === 'Cart not found') {
+          // If already gone from backend, successfully remove from UI
+          return { productId, isAuth: !!user }
+        }
         return rejectWithValue(err.message)
       }
     }

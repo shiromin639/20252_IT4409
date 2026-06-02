@@ -15,6 +15,9 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 import cloudinary
 import cloudinary.uploader
 from app.core.config import settings
+from app.core.cache import get_cache, set_cache, invalidate_cache, invalidate_cache_pattern
+import hashlib
+import json
 
 # Configure Cloudinary
 cloudinary.config(
@@ -57,6 +60,7 @@ async def create_product(session: SessionDep, product_in: ProductCreate):
     session.add(product)
     await session.commit()
     await session.refresh(product)
+    await invalidate_cache_pattern("products:list:*")
     return product
 
 @router.get("/products", response_model=ProductsPublic)
@@ -71,6 +75,24 @@ async def read_products(
     max_price: float | None = None,
     sort_by: str | None = "newest"
 ):
+    # Construct cache key based on query params
+    query_params = {
+        "skip": skip,
+        "limit": limit,
+        "q": q,
+        "category_id": category_id,
+        "brand": brand,
+        "min_price": min_price,
+        "max_price": max_price,
+        "sort_by": sort_by
+    }
+    query_hash = hashlib.md5(json.dumps(query_params, sort_keys=True).encode()).hexdigest()
+    cache_key = f"products:list:{query_hash}"
+    
+    cached_data = await get_cache(cache_key)
+    if cached_data:
+        return ProductsPublic(**cached_data)
+
     query = select(Product).join(Category, isouter=True)
     
     if q:
@@ -153,7 +175,10 @@ async def read_products(
     products = await session.exec(query)
     products = products.all()
     products_public = [ProductPublic.model_validate(product) for product in products]
-    return ProductsPublic(data=products_public, count=count)
+    result = ProductsPublic(data=products_public, count=count)
+    
+    await set_cache(cache_key, result.model_dump(mode="json"), ttl=600)
+    return result
 
 
 @router.get("/brands", response_model=list[str])
@@ -189,11 +214,18 @@ async def read_products_by_category_id(
 
 @router.get("/products/{product_id}", response_model=ProductPublic)
 async def read_product(session: SessionDep, product_id: int):
+    cache_key = f"product:{product_id}"
+    cached_data = await get_cache(cache_key)
+    if cached_data:
+        return ProductPublic(**cached_data)
+
     product = await session.get(Product, product_id)
     if not product:
         raise HTTPException(
             status_code=404, detail=f"Product with id: {product_id} not found"
         )
+        
+    await set_cache(cache_key, ProductPublic.model_validate(product).model_dump(mode="json"), ttl=3600)
     return product
 
 
@@ -211,6 +243,10 @@ async def update_product(
     session.add(product)
     await session.commit()
     await session.refresh(product)
+    
+    await invalidate_cache(f"product:{product_id}")
+    await invalidate_cache_pattern("products:list:*")
+    
     return product
 
 
@@ -223,6 +259,10 @@ async def delete_product(session: SessionDep, product_id: int):
         )
     await session.delete(product)
     await session.commit()
+    
+    await invalidate_cache(f"product:{product_id}")
+    await invalidate_cache_pattern("products:list:*")
+    
     return {"message": "Delete product successfully"}
 
 from pydantic import BaseModel

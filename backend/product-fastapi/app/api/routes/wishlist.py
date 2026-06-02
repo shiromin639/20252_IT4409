@@ -4,6 +4,7 @@ from sqlmodel import select, func
 from app.api.deps import SessionDep, CurrentUserId
 from app.models.wishlist import Wishlist, WishlistItem
 from app.models.product import Product
+from app.core.cache import get_cache, set_cache, invalidate_cache
 
 router = APIRouter(tags=["wishlist"])
 
@@ -78,6 +79,8 @@ async def add_wishlist_item(session: SessionDep, current_user_id: CurrentUserId,
     new_item = WishlistItem(wishlist_id=wishlist.id, product_id=item_in.product_id)
     session.add(new_item)
     await session.commit()
+    
+    await invalidate_cache("admin:wishlist_stats")
     return {"message": "Item added to wishlist"}
 
 @router.delete("/wishlist/items/{product_id}")
@@ -98,10 +101,17 @@ async def remove_wishlist_item(session: SessionDep, current_user_id: CurrentUser
         
     await session.delete(item)
     await session.commit()
+    
+    await invalidate_cache("admin:wishlist_stats")
     return {"message": "Item removed from wishlist"}
 
 @router.get("/admin/wishlist/stats")
 async def get_wishlist_stats(session: SessionDep) -> Any:
+    cache_key = "admin:wishlist_stats"
+    cached = await get_cache(cache_key)
+    if cached:
+        return cached
+
     # total wishlisted count per product (top 10)
     statement = (
         select(WishlistItem.product_id, Product.name, func.count(WishlistItem.id).label("count"))
@@ -114,4 +124,5 @@ async def get_wishlist_stats(session: SessionDep) -> Any:
     
     top_products = [{"product_id": r.product_id, "product_name": r.name, "wishlisted_count": r.count} for r in results]
     
+    await set_cache(cache_key, top_products, ttl=300)
     return top_products

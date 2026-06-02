@@ -10,13 +10,16 @@ from app.models.order import (
     OrderUpdate,
     OrdersPublic,
 )
-from app.models.order_item import OrderItem, OrderItemPublic
+from app.models.order_item import OrderItem, OrderItemPublic, OrderItemDetail
 
 
 import json
-from fastapi import APIRouter, HTTPException
+import logging
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from sqlmodel import col, func, select
 from app.api.deps import SessionDep
+
+logger = logging.getLogger(__name__)
 from app.models.order import (
     Order,
     OrderCreate,
@@ -24,13 +27,14 @@ from app.models.order import (
     OrderUpdate,
     OrdersPublic,
 )
-from app.models.order_item import OrderItem, OrderItemPublic
+from app.models.order_item import OrderItem, OrderItemPublic, OrderItemDetail
 from app.core.services import ProductService, InventoryService
+from app.services.email_client import email_client
 
 router = APIRouter(tags=["order"])
 
 @router.post("/orders", response_model=OrderPublic)
-async def create_order(session: SessionDep, order_in: OrderCreate):
+async def create_order(session: SessionDep, order_in: OrderCreate, background_tasks: BackgroundTasks):
     # Securely calculate total amount by fetching real product prices
     calculated_items = []
     total = Decimal("0")
@@ -38,8 +42,11 @@ async def create_order(session: SessionDep, order_in: OrderCreate):
     for item_in in order_in.items:
         try:
             real_price = ProductService.get_product_price(item_in.product_id)
+            product_data = ProductService.get_product(item_in.product_id)
             calculated_items.append({
                 "product_id": item_in.product_id,
+                "product_name": product_data.get("name", f"Product {item_in.product_id}") if product_data else f"Product {item_in.product_id}",
+                "image_url": product_data.get("image_url", "https://via.placeholder.com/60") if product_data else "https://via.placeholder.com/60",
                 "quantity": item_in.quantity,
                 "unit_price": real_price
             })
@@ -88,6 +95,29 @@ async def create_order(session: SessionDep, order_in: OrderCreate):
 
     session.commit()
     session.refresh(order)
+    logger.info("Order created")
+    
+    # Send order confirmation email
+    email_payload = {
+        "order_id": str(order.id),
+        "recipient": order.shipping_address if order.shipping_address and "@" in order.shipping_address else f"user{order.user_id}@example.com",
+        "customer_name": f"Customer {order.user_id}",
+        "order_date": order.created_at.isoformat() if order.created_at else "",
+        "payment_method": order.payment_method,
+        "payment_status": order.payment_status,
+        "shipping_address": order.shipping_address,
+        "items": [
+            {
+                "product_name": item["product_name"],
+                "image_url": item["image_url"],
+                "quantity": item["quantity"],
+                "price": float(item["unit_price"])
+            } for item in calculated_items
+        ],
+        "total_amount": float(order.total_amount)
+    }
+    background_tasks.add_task(email_client.send_order_confirmation, email_payload)
+    
     return order
 
 
@@ -135,7 +165,7 @@ async def read_order(session: SessionDep, order_id: int):
     return order
 
 
-@router.get("/orders/{order_id}/items", response_model=list[OrderItemPublic])
+@router.get("/orders/{order_id}/items", response_model=list[OrderItemDetail])
 async def read_order_items(session: SessionDep, order_id: int):
     order = session.get(Order, order_id)
     if not order:
@@ -144,7 +174,19 @@ async def read_order_items(session: SessionDep, order_id: int):
         )
     statement = select(OrderItem).where(OrderItem.order_id == order_id)
     items = session.exec(statement).all()
-    return items
+    
+    enriched_items = []
+    for item in items:
+        product_data = ProductService.get_product(item.product_id)
+        enriched_items.append(
+            OrderItemDetail(
+                **item.model_dump(),
+                product_name=product_data.get("name", f"Product #{item.product_id}") if product_data else f"Product #{item.product_id}",
+                image_url=product_data.get("image_url", "https://via.placeholder.com/150?text=Laptop") if product_data else "https://via.placeholder.com/150?text=Laptop"
+            )
+        )
+        
+    return enriched_items
 
 @router.get("/orders/check-purchase/internal")
 async def check_purchase(session: SessionDep, user_id: int, product_id: int):
@@ -161,7 +203,7 @@ async def check_purchase(session: SessionDep, user_id: int, product_id: int):
 
 @router.put("/orders/{order_id}", response_model=OrderPublic)
 async def update_order(
-    session: SessionDep, order_id: int, order_in: OrderUpdate
+    session: SessionDep, order_id: int, order_in: OrderUpdate, background_tasks: BackgroundTasks
 ):
     order = session.get(Order, order_id)
     if not order:
@@ -169,10 +211,22 @@ async def update_order(
             status_code=404, detail=f"Order with id: {order_id} not found"
         )
     update_dict = order_in.model_dump(exclude_unset=True)
+    old_status = order.status
     _ = order.sqlmodel_update(update_dict)
     session.add(order)
     session.commit()
     session.refresh(order)
+    
+    # Send shipping status email if status changed
+    if "status" in update_dict and update_dict["status"] != old_status:
+        email_payload = {
+            "order_id": str(order.id),
+            "recipient": order.shipping_address if order.shipping_address and "@" in order.shipping_address else f"user{order.user_id}@example.com",
+            "customer_name": f"Customer {order.user_id}",
+            "status": order.status
+        }
+        background_tasks.add_task(email_client.send_shipping_status, email_payload)
+        
     return order
 
 

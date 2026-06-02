@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
 import { CheckCircle, XCircle, Home, ShoppingBag } from 'lucide-react'
+import { clearCartAsync } from '../../store/cartSlice'
 import styles from './PaymentReturn.module.css'
 
 export default function PaymentReturnPage() {
@@ -10,6 +12,7 @@ export default function PaymentReturnPage() {
   const [status, setStatus] = useState('loading')
   const [orderId, setOrderId] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const dispatch = useDispatch()
 
   useEffect(() => {
     const isSuccess = searchParams.get('success') === 'true'
@@ -21,6 +24,8 @@ export default function PaymentReturnPage() {
 
     if (isSuccess) {
       setStatus('success')
+      // VNPay payment was successful, clear the cart
+      dispatch(clearCartAsync())
     } else {
       setStatus('error')
       if (errorMsg === 'invalid_signature') {

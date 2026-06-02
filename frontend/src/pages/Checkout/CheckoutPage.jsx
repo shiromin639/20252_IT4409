@@ -62,11 +62,28 @@ export default function CheckoutPage() {
     setLoading(true)
     try {
       console.log("Submit clicked. Payment method:", payment);
+      
+      if (!user || !user.id) {
+        console.error("Checkout failed: user object is null or missing id", user);
+        toast.error("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+        navigate('/login');
+        setLoading(false);
+        return;
+      }
+
+      const validItems = items.filter(item => item && item.id);
+      if (validItems.length === 0) {
+        console.error("Checkout failed: no valid items in cart", items);
+        toast.error("Giỏ hàng không hợp lệ.");
+        setLoading(false);
+        return;
+      }
+
       const orderData = {
         user_id: user.id,
         shipping_address: form.address,
         payment_method: payment === 'vnpay' ? 'VNPAY' : 'COD',
-        items: items.map(item => ({ product_id: item.id, quantity: item.quantity }))
+        items: validItems.map(item => ({ product_id: item.id, quantity: item.quantity }))
       }
       console.log("Order Data payload:", orderData);
       

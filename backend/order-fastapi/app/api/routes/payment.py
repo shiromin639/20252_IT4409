@@ -2,8 +2,9 @@ from datetime import datetime
 import hashlib
 import hmac
 import urllib.parse
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, BackgroundTasks
 from fastapi.responses import RedirectResponse
+from app.services.email_client import email_client
 from app.api.deps import SessionDep
 from app.core.config import settings
 from app.models.order import Order
@@ -91,7 +92,7 @@ def create_vnpay_payment(request: Request, body: VNPayCreateRequest, session: Se
     return {"payment_url": payment_url}
 
 @router.get("/vnpay/return")
-def vnpay_return(request: Request, session: SessionDep):
+def vnpay_return(request: Request, session: SessionDep, background_tasks: BackgroundTasks):
     input_data = dict(request.query_params)
     vnp_SecureHash = input_data.pop("vnp_SecureHash", "")
     
@@ -127,12 +128,22 @@ def vnpay_return(request: Request, session: SessionDep):
             session.add(order)
             session.commit()
             
+            # Send payment success email
+            email_payload = {
+                "order_id": str(order.id),
+                "recipient": order.shipping_address if order.shipping_address and "@" in order.shipping_address else f"user{order.user_id}@example.com",
+                "customer_name": f"Customer {order.user_id}",
+                "amount": float(order.total_amount),
+                "transaction_id": input_data.get("vnp_TransactionNo")
+            }
+            background_tasks.add_task(email_client.send_payment_success, email_payload)
+            
         return RedirectResponse(url=f"http://localhost:5173/payment/vnpay/return?success=true&order_id={order_id}")
     else:
         return RedirectResponse(url=f"http://localhost:5173/payment/vnpay/return?success=false&order_id={order_id}&error_code={response_code}")
 
 @router.get("/vnpay/ipn")
-def vnpay_ipn(request: Request, session: SessionDep):
+def vnpay_ipn(request: Request, session: SessionDep, background_tasks: BackgroundTasks):
     input_data = dict(request.query_params)
     vnp_SecureHash = input_data.pop("vnp_SecureHash", "")
     
@@ -170,6 +181,17 @@ def vnpay_ipn(request: Request, session: SessionDep):
         order.payment_transaction_id = input_data.get("vnp_TransactionNo")
         session.add(order)
         session.commit()
+        
+        # Send payment success email
+        email_payload = {
+            "order_id": str(order.id),
+            "recipient": order.shipping_address if order.shipping_address and "@" in order.shipping_address else f"user{order.user_id}@example.com",
+            "customer_name": f"Customer {order.user_id}",
+            "amount": float(order.total_amount),
+            "transaction_id": input_data.get("vnp_TransactionNo")
+        }
+        background_tasks.add_task(email_client.send_payment_success, email_payload)
+        
         return {"RspCode": "00", "Message": "Confirm Success"}
     else:
         order.payment_status = "FAILED"

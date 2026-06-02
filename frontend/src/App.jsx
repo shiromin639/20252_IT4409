@@ -17,6 +17,7 @@ import CheckoutPage from './pages/Checkout/CheckoutPage'
 import WishlistPage from './pages/Wishlist/WishlistPage'
 import AuthPage from './pages/Auth/AuthPage'
 import ProfilePage from './pages/Profile/ProfilePage'
+import OrderDetailPage from './pages/Order/OrderDetailPage'
 import PaymentReturnPage from './pages/Payment/PaymentReturnPage'
 import AdminDashboard, {
   AdminHome,
@@ -25,6 +26,7 @@ import AdminDashboard, {
   AdminUsers,
   AdminReviews,
 } from './pages/Admin/AdminDashboard'
+import EmailActivity from './pages/Admin/EmailActivity'
 
 // Static Pages (Information & Policies)
 import AboutPage from './pages/Information/AboutPage'
@@ -105,6 +107,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/orders/:orderId"
+                element={
+                  <ProtectedRoute>
+                    <OrderDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/wishlist"
                 element={
                   <ProtectedRoute>
@@ -136,6 +146,7 @@ export default function App() {
               <Route path="orders" element={<AdminOrders />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="reviews" element={<AdminReviews />} />
+              <Route path="emails" element={<EmailActivity />} />
             </Route>
 
             {/* Fallback */}

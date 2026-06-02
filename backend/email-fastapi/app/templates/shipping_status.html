@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Order Status Update</h3>
+<p>Hello {{ status.customer_name }},</p>
+<p>The status of your order <strong>#{{ status.order_id }}</strong> has been updated to:</p>
+<h2 style="color: #2c3e50;">{{ status.status }}</h2>
+<p>Thank you for shopping with us!</p>
+{% endblock %}

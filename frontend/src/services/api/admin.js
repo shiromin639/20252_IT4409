@@ -36,6 +36,10 @@ export const adminApi = {
     return apiClient.get('/admin/wishlist/stats');
   },
 
+  getEmailActivity: async () => {
+    return apiClient.get('/admin/emails/activity');
+  },
+
   /**
    * Gets all users (Admin only).
    */

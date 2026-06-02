@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Payment Successful!</h3>
+<p>Hello {{ payment.customer_name }},</p>
+<p>We've successfully received your payment for order <strong>#{{ payment.order_id }}</strong>.</p>
+<p><strong>Amount Paid:</strong> ${{ payment.amount }}</p>
+<p><strong>Payment Method:</strong> VNPay</p>
+<p>We will notify you once your order has been shipped.</p>
+{% endblock %}

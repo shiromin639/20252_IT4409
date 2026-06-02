@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import {
-  LayoutDashboard, Package, ShoppingBag, Users, LogOut,
+  LayoutDashboard, Package, ShoppingBag, Users, LogOut, Mail,
   TrendingUp, DollarSign, ShoppingCart, Star, Plus, Edit2,
   Trash2, Search, ChevronDown, BarChart2, Eye
 } from 'lucide-react'
@@ -32,6 +32,7 @@ function AdminSidebar() {
     { to: '/admin/orders', label: 'Đơn hàng', icon: <ShoppingBag size={17} /> },
     { to: '/admin/users', label: 'Người dùng', icon: <Users size={17} /> },
     { to: '/admin/reviews', label: 'Đánh giá', icon: <Star size={17} /> },
+    { to: '/admin/emails', label: 'Email', icon: <Mail size={17} /> },
   ]
 
   return (
@@ -402,10 +403,32 @@ export function AdminOrders() {
                         <span className={`badge badge-${paymentStatusColor}`}>{order.payment_status || 'PENDING'}</span>
                       </div>
                     </td>
-                    <td><span className={`badge badge-${status.color}`}>{status.label}</span></td>
+                    <td>
+                      <select 
+                        className="form-input" 
+                        style={{ padding: '4px 8px', fontSize: '13px', width: 'auto', minWidth: '120px' }}
+                        value={order.status}
+                        onChange={async (e) => {
+                          try {
+                            const newStatus = e.target.value;
+                            await adminApi.updateOrder(order.id, { status: newStatus });
+                            setOrders(orders.map(o => o.id === order.id ? { ...o, status: newStatus } : o));
+                            toast.success('Cập nhật trạng thái thành công');
+                          } catch (err) {
+                            toast.error('Lỗi cập nhật trạng thái');
+                          }
+                        }}
+                      >
+                        <option value="pending">Chờ xác nhận</option>
+                        <option value="confirmed">Đã xác nhận</option>
+                        <option value="shipped">Đang giao hàng</option>
+                        <option value="delivered">Hoàn thành</option>
+                        <option value="cancelled">Đã hủy</option>
+                      </select>
+                    </td>
                     <td>
                       <div className={styles.actions}>
-                        <button className="btn btn-secondary btn-sm">Chi tiết</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => toast('Chức năng đang phát triển')}>Chi tiết</button>
                       </div>
                     </td>
                   </tr>

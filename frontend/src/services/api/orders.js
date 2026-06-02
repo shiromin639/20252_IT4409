@@ -35,10 +35,14 @@ export const orderApi = {
     return apiClient.get(`/orders/${orderId}`);
   },
 
-  /**
-   * Gets items for a specific order.
-   */
   getOrderItems: async (orderId) => {
     return apiClient.get(`/orders/${orderId}/items`);
+  },
+
+  /**
+   * Cancels a specific order.
+   */
+  cancelOrder: async (orderId) => {
+    return apiClient.put(`/orders/${orderId}`, { status: 'cancelled' });
   }
 };

@@ -26,9 +26,11 @@ export const formatDate = (dateStr) => {
 export const getStatusLabel = (status) => {
   const map = {
     pending: { label: 'Chờ xác nhận', color: 'warning' },
+    confirmed: { label: 'Đã xác nhận', color: 'primary' },
     processing: { label: 'Đang xử lý', color: 'primary' },
+    shipped: { label: 'Đang giao hàng', color: 'primary' },
     shipping: { label: 'Đang giao hàng', color: 'primary' },
-    delivered: { label: 'Đã giao hàng', color: 'success' },
+    delivered: { label: 'Hoàn thành', color: 'success' },
     cancelled: { label: 'Đã hủy', color: 'danger' },
   }
   return map[status] || { label: status, color: 'muted' }
