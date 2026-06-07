@@ -7,13 +7,18 @@ import com.example.shop.payloads.response.SePayWebhookResponse;
 import com.example.shop.services.OrderService;
 import com.example.shop.utils.AuthUtil;
 import com.example.shop.utils.SePayUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/payment")
+@Tag(name = "7. Payments", description = "SePay QR payment generation and webhook processing")
 public class PaymentController {
 
     @Autowired
@@ -25,18 +30,19 @@ public class PaymentController {
     @Autowired
     private AuthUtil authUtil;
 
-    /**
-     * Tạo QR thanh toán SePay cho đơn hàng PENDING.
-     * Dùng khi user muốn lấy lại QR hoặc chuyển từ COD sang chuyển khoản.
-     */
+    @Operation(summary = "Get payment QR",
+            description = "Generate or retrieve the SePay QR payment URL for an `AWAITING_PAYMENT` order. User can use this to get the QR code again if they didn't pay immediately.")
+    @ApiResponse(responseCode = "200", description = "QR URL returned")
+    @ApiResponse(responseCode = "400", description = "Order is not in AWAITING_PAYMENT status")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/qr")
     public ResponseEntity<PaymentQrResponse> getPaymentQr(@RequestParam Long orderId) {
         Long userId = authUtil.loggedInUserId();
         OrderDTO order = orderService.getOrderById(userId, orderId);
 
-        if (!"PENDING".equalsIgnoreCase(order.getStatus())) {
+        if (!"AWAITING_PAYMENT".equalsIgnoreCase(order.getStatus())) {
             throw new IllegalArgumentException(
-                    "Order is not in PENDING state. Current: " + order.getStatus());
+                    "Order is not awaiting payment. Current status: " + order.getStatus());
         }
 
         String qrUrl = sePayUtil.createPaymentUrl(orderId, order.getTotalPrice().doubleValue());
@@ -48,10 +54,17 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Webhook nhận thông báo giao dịch từ SePay.
-     * PUBLIC endpoint, bảo mật bằng API Key trong Header.
-     */
+    @Operation(summary = "SePay webhook",
+            description = """
+                    **Public endpoint** — called by SePay when a bank transfer is received.
+                    Secured via API Key in the `Authorization` header (not JWT).
+                    
+                    Flow: SePay detects payment → calls this webhook → order moves from `AWAITING_PAYMENT` to `CONFIRMED`.
+                    
+                    The order ID is extracted from the transfer content (e.g., "DH12" → order 12).""")
+    @ApiResponse(responseCode = "200", description = "Payment processed or already handled")
+    @ApiResponse(responseCode = "401", description = "Invalid API key")
+    @ApiResponse(responseCode = "400", description = "Missing transaction code or amount")
     @PostMapping("/sepay-webhook")
     public ResponseEntity<SePayWebhookResponse> sePayWebhook(
             @RequestHeader(value = "Authorization", required = false) String authHeader,

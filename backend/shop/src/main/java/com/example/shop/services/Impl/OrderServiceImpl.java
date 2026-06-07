@@ -2,14 +2,15 @@ package com.example.shop.services.Impl;
 
 import com.example.shop.exceptions.ResourceNotFoundException;
 import com.example.shop.models.*;
+import com.example.shop.payloads.dto.AddressDTO;
 import com.example.shop.payloads.dto.CheckoutPreviewDTO;
 import com.example.shop.payloads.dto.OrderDTO;
 import com.example.shop.payloads.dto.OrderItemDTO;
 import com.example.shop.payloads.request.CheckoutRequest;
-import com.example.shop.repositories.CartRepository;
-import com.example.shop.repositories.OrderRepository;
-import com.example.shop.repositories.ProductRepository;
+import com.example.shop.repositories.*;
+import com.example.shop.services.AddressService;
 import com.example.shop.services.OrderService;
+import com.example.shop.services.VoucherService;
 import com.example.shop.utils.SePayUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -33,7 +36,32 @@ public class OrderServiceImpl implements OrderService {
     private ProductRepository productRepository;
 
     @Autowired
+    private VoucherRepository voucherRepository;
+
+    @Autowired
+    private AddressRepository addressRepository;
+
+    @Autowired
+    private VoucherService voucherService;
+
+    @Autowired
+    private AddressService addressService;
+
+    @Autowired
     private SePayUtil sePayUtil;
+
+    /**
+     * Valid state transitions for the order lifecycle.
+     * Key = current status, Value = allowed next statuses.
+     */
+    private static final Map<OrderStatus, Set<OrderStatus>> VALID_TRANSITIONS = Map.of(
+            OrderStatus.PENDING, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
+            OrderStatus.AWAITING_PAYMENT, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
+            OrderStatus.CONFIRMED, Set.of(OrderStatus.SHIPPING, OrderStatus.CANCELLED),
+            OrderStatus.SHIPPING, Set.of(OrderStatus.DELIVERED),
+            OrderStatus.DELIVERED, Set.of(),
+            OrderStatus.CANCELLED, Set.of()
+    );
 
     // ==========================================
     // CHECKOUT
@@ -41,7 +69,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public CheckoutPreviewDTO previewCheckout(Long userId, String couponCode) {
+    public CheckoutPreviewDTO previewCheckout(Long userId, String voucherCode) {
         Cart cart = cartRepository.findCartByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + userId));
 
@@ -72,18 +100,22 @@ public class OrderServiceImpl implements OrderService {
             itemDTOs.add(itemDto);
         }
 
-        // Tính coupon
-        CouponResult coupon = applyCoupon(couponCode, subTotal);
-        BigDecimal totalPrice = subTotal.subtract(coupon.discount).max(BigDecimal.ZERO);
+        // Validate voucher via VoucherService (replaces hardcoded applyCoupon)
+        VoucherService.VoucherValidationResult voucherResult = voucherService.validateVoucher(voucherCode, subTotal);
+        BigDecimal totalPrice = subTotal.subtract(voucherResult.discount()).max(BigDecimal.ZERO);
 
         CheckoutPreviewDTO preview = new CheckoutPreviewDTO();
         preview.setItems(itemDTOs);
         preview.setSubTotal(subTotal);
-        preview.setCouponDiscount(coupon.discount);
+        preview.setVoucherDiscount(voucherResult.discount());
         preview.setTotalPrice(totalPrice);
-        preview.setCouponCode(couponCode != null ? couponCode.toUpperCase().trim() : null);
-        preview.setCouponValid(coupon.valid);
-        preview.setCouponMessage(coupon.message);
+        preview.setVoucherCode(voucherCode != null ? voucherCode.toUpperCase().trim() : null);
+        preview.setVoucherValid(voucherResult.valid());
+        preview.setVoucherMessage(voucherResult.message());
+
+        // Include user's saved addresses
+        List<AddressDTO> savedAddresses = addressService.getUserAddresses(userId);
+        preview.setSavedAddresses(savedAddresses);
 
         return preview;
     }
@@ -99,7 +131,24 @@ public class OrderServiceImpl implements OrderService {
             throw new IllegalArgumentException("Cannot checkout with an empty cart");
         }
 
-        // 2. Tính subtotal
+        // 2. Resolve shipping address (from saved address OR direct input)
+        String shippingAddress;
+        String phoneNumber;
+        if (request.getAddressId() != null) {
+            Address address = addressRepository.findByAddressIdAndUserUserId(request.getAddressId(), userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Address", "addressId", request.getAddressId()));
+            shippingAddress = address.toFullAddress();
+            phoneNumber = address.getPhoneNumber();
+        } else if (request.getShippingAddress() != null && !request.getShippingAddress().trim().isEmpty()) {
+            shippingAddress = request.getShippingAddress();
+            phoneNumber = request.getPhoneNumber() != null
+                    ? request.getPhoneNumber()
+                    : cart.getUser().getPhoneNumber();
+        } else {
+            throw new IllegalArgumentException("Either addressId or shippingAddress must be provided");
+        }
+
+        // 3. Tính subtotal
         BigDecimal subTotal = BigDecimal.ZERO;
         for (CartItem cartItem : cartItems) {
             BigDecimal itemTotal = BigDecimal.valueOf(cartItem.getProductPrice())
@@ -107,37 +156,49 @@ public class OrderServiceImpl implements OrderService {
             subTotal = subTotal.add(itemTotal);
         }
 
-        // 3. Validate coupon TRƯỚC khi trừ stock (fail-fast)
-        BigDecimal couponDiscount = BigDecimal.ZERO;
-        String validatedCouponCode = null;
-        if (request.getCouponCode() != null && !request.getCouponCode().trim().isEmpty()) {
-            CouponResult coupon = applyCoupon(request.getCouponCode(), subTotal);
-            if (!coupon.valid) {
-                throw new IllegalArgumentException(coupon.message);
+        // 4. Validate voucher (fail-fast)
+        BigDecimal voucherDiscount = BigDecimal.ZERO;
+        Voucher appliedVoucher = null;
+        if (request.getVoucherCode() != null && !request.getVoucherCode().trim().isEmpty()) {
+            VoucherService.VoucherValidationResult voucherResult =
+                    voucherService.validateVoucher(request.getVoucherCode(), subTotal);
+            if (!voucherResult.valid()) {
+                throw new IllegalArgumentException(voucherResult.message());
             }
-            couponDiscount = coupon.discount;
-            validatedCouponCode = request.getCouponCode().toUpperCase().trim();
+            voucherDiscount = voucherResult.discount();
+            appliedVoucher = voucherRepository.findById(voucherResult.voucherId())
+                    .orElse(null);
         }
 
-        BigDecimal totalPrice = subTotal.subtract(couponDiscount).max(BigDecimal.ZERO);
+        BigDecimal totalPrice = subTotal.subtract(voucherDiscount).max(BigDecimal.ZERO);
 
-        // 4. Tạo Order
+        // 5. Determine payment method and initial status
+        String paymentMethod = request.getPaymentMethod() != null
+                ? request.getPaymentMethod().toUpperCase().trim()
+                : "COD";
+
+        OrderStatus initialStatus;
+        if ("SEPAY".equals(paymentMethod)) {
+            // SePay: đơn hàng chờ thanh toán, chưa xác nhận
+            initialStatus = OrderStatus.AWAITING_PAYMENT;
+        } else {
+            // COD: đơn vào PENDING, admin sẽ duyệt
+            initialStatus = OrderStatus.PENDING;
+        }
+
+        // 6. Tạo Order
         Order order = new Order();
         order.setUser(cart.getUser());
-        order.setShippingAddress(request.getShippingAddress());
-        order.setPhoneNumber(request.getPhoneNumber() != null
-                ? request.getPhoneNumber()
-                : cart.getUser().getPhoneNumber());
-        order.setPaymentMethod(request.getPaymentMethod() != null
-                ? request.getPaymentMethod()
-                : "COD");
+        order.setShippingAddress(shippingAddress);
+        order.setPhoneNumber(phoneNumber);
+        order.setPaymentMethod(paymentMethod);
         order.setNotes(request.getNotes());
-        order.setStatus(OrderStatus.PENDING);
-        order.setCouponCode(validatedCouponCode);
-        order.setCouponDiscount(couponDiscount.doubleValue());
+        order.setStatus(initialStatus);
+        order.setAppliedVoucher(appliedVoucher);
+        order.setVoucherDiscount(voucherDiscount.doubleValue());
         order.setTotalPrice(totalPrice.doubleValue());
 
-        // 5. Chuyển CartItem → OrderItem, kiểm tra + trừ stock
+        // 7. Chuyển CartItem → OrderItem, kiểm tra + trừ stock
         for (CartItem cartItem : cartItems) {
             Product product = cartItem.getProduct();
 
@@ -161,18 +222,24 @@ public class OrderServiceImpl implements OrderService {
             productRepository.save(product);
         }
 
-        // 6. Lưu order
+        // 8. Lưu order
         Order savedOrder = orderRepository.save(order);
 
-        // 7. Xoá giỏ hàng
+        // 9. Increment voucher usage
+        if (appliedVoucher != null) {
+            voucherService.incrementUsage(appliedVoucher.getCode());
+        }
+
+        // 10. Xoá giỏ hàng
         cart.getCartItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
 
-        // 8. Build response
+        // 11. Build response
         OrderDTO orderDTO = mapToOrderDTO(savedOrder);
 
-        if ("SEPAY".equalsIgnoreCase(savedOrder.getPaymentMethod())) {
+        // Nếu SEPAY, tạo QR payment URL để user thanh toán ngay
+        if ("SEPAY".equals(paymentMethod)) {
             String qrUrl = sePayUtil.createPaymentUrl(savedOrder.getOrderId(), savedOrder.getTotalPrice());
             orderDTO.setPaymentUrl(qrUrl);
         }
@@ -204,14 +271,16 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findOrderByUserIdAndOrderId(userId, orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
+        // User can cancel PENDING or AWAITING_PAYMENT orders
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
             throw new IllegalArgumentException(
                     "Cannot cancel order with status: " + order.getStatus()
-                            + ". Only PENDING orders can be cancelled.");
+                            + ". Only PENDING or AWAITING_PAYMENT orders can be cancelled.");
         }
 
         order.setStatus(OrderStatus.CANCELLED);
         restoreStock(order);
+        restoreVoucher(order);
 
         return mapToOrderDTO(orderRepository.save(order));
     }
@@ -238,11 +307,22 @@ public class OrderServiceImpl implements OrderService {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
                     "Invalid order status: " + status
-                            + ". Valid values: PENDING, CONFIRMED, SHIPPING, DELIVERED, CANCELLED");
+                            + ". Valid values: PENDING, AWAITING_PAYMENT, CONFIRMED, SHIPPING, DELIVERED, CANCELLED");
         }
 
-        if (newStatus == OrderStatus.CANCELLED && order.getStatus() != OrderStatus.CANCELLED) {
+        // Validate state transition
+        OrderStatus currentStatus = order.getStatus();
+        Set<OrderStatus> allowed = VALID_TRANSITIONS.getOrDefault(currentStatus, Set.of());
+        if (!allowed.contains(newStatus)) {
+            throw new IllegalArgumentException(
+                    "Invalid status transition: " + currentStatus + " → " + newStatus
+                            + ". Allowed transitions: " + allowed);
+        }
+
+        // If cancelling, restore stock and voucher
+        if (newStatus == OrderStatus.CANCELLED) {
             restoreStock(order);
+            restoreVoucher(order);
         }
 
         order.setStatus(newStatus);
@@ -258,8 +338,9 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
 
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new IllegalStateException("Order already processed");
+        // Only process orders that are awaiting payment
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            throw new IllegalStateException("Order already processed. Current status: " + order.getStatus());
         }
 
         if (Math.abs(order.getTotalPrice() - amount) > 0.01) {
@@ -267,6 +348,7 @@ public class OrderServiceImpl implements OrderService {
                     "Payment amount mismatch. Expected: " + order.getTotalPrice() + ", received: " + amount);
         }
 
+        // Payment confirmed → move to CONFIRMED
         order.setStatus(OrderStatus.CONFIRMED);
         return mapToOrderDTO(orderRepository.save(order));
     }
@@ -291,6 +373,15 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    /**
+     * Rollback voucher usage when an order is cancelled.
+     */
+    private void restoreVoucher(Order order) {
+        if (order.getAppliedVoucher() != null) {
+            voucherService.decrementUsage(order.getAppliedVoucher().getCode());
+        }
+    }
+
     private OrderDTO mapToOrderDTO(Order order) {
         OrderDTO dto = new OrderDTO();
         dto.setOrderId(order.getOrderId());
@@ -302,12 +393,20 @@ public class OrderServiceImpl implements OrderService {
         dto.setPhoneNumber(order.getPhoneNumber());
         dto.setPaymentMethod(order.getPaymentMethod());
         dto.setNotes(order.getNotes());
-        dto.setCouponCode(order.getCouponCode());
-        dto.setCouponDiscount(order.getCouponDiscount() != null
-                ? BigDecimal.valueOf(order.getCouponDiscount())
+
+        // Voucher info
+        if (order.getAppliedVoucher() != null) {
+            dto.setVoucherCode(order.getAppliedVoucher().getCode());
+        }
+        dto.setVoucherDiscount(order.getVoucherDiscount() != null
+                ? BigDecimal.valueOf(order.getVoucherDiscount())
                 : BigDecimal.ZERO);
+
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
+
+        // Rating eligibility
+        dto.setCanRate(order.getStatus() == OrderStatus.DELIVERED);
 
         List<OrderItemDTO> itemDTOs = new ArrayList<>();
         for (OrderItem item : order.getOrderItems()) {
@@ -329,30 +428,4 @@ public class OrderServiceImpl implements OrderService {
 
         return dto;
     }
-
-    /**
-     * Tính coupon discount.
-     * Demo hardcode — production nên query từ Coupon table trong DB.
-     */
-    private CouponResult applyCoupon(String couponCode, BigDecimal subTotal) {
-        if (couponCode == null || couponCode.trim().isEmpty()) {
-            return new CouponResult(false, BigDecimal.ZERO, "No coupon applied");
-        }
-
-        return switch (couponCode.toUpperCase().trim()) {
-            case "DISCOUNT10" -> new CouponResult(true,
-                    subTotal.multiply(BigDecimal.valueOf(0.1)),
-                    "Applied 10% discount");
-            case "FREE50" -> new CouponResult(true,
-                    BigDecimal.valueOf(50000).min(subTotal),
-                    "Applied 50,000 VND discount");
-            case "WELCOME" -> new CouponResult(true,
-                    BigDecimal.valueOf(20000).min(subTotal),
-                    "Applied 20,000 VND discount");
-            default -> new CouponResult(false, BigDecimal.ZERO, "Invalid or expired coupon code");
-        };
-    }
-
-    /** Kết quả áp dụng coupon */
-    private record CouponResult(boolean valid, BigDecimal discount, String message) {}
 }

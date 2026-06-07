@@ -4,6 +4,7 @@ import com.example.shop.exceptions.ResourceNotFoundException;
 import com.example.shop.models.Category;
 import com.example.shop.models.Product;
 import com.example.shop.payloads.dto.ProductDTO;
+import com.example.shop.payloads.dto.ProductSuggestionDTO;
 import com.example.shop.payloads.response.ProductResponse;
 import com.example.shop.repositories.CategoryRepository;
 import com.example.shop.repositories.ProductRepository;
@@ -21,7 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -38,6 +44,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Value("${image.base.url}")
     private String imageBaseUrl;
+
+    @Value("${image.upload.dir:uploads/images}")
+    private String uploadDir;
 
     @Override
     public ProductDTO addProduct(Long categoryId, ProductDTO productDTO) {
@@ -61,16 +70,33 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProductResponse getAllProducts(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder, String keyword, String category) {
+    public ProductResponse getAllProducts(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder,
+                                          String keyword, String category, Double minPrice, Double maxPrice) {
         Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
 
         Specification<Product> spec = (root, query, cb) -> cb.conjunction();
+
+        // Keyword filter (search in product name AND description)
         if (keyword != null && !keyword.isEmpty()) {
-            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("productName")), "%" + keyword.toLowerCase() + "%"));
+            spec = spec.and((root, query, cb) -> cb.or(
+                    cb.like(cb.lower(root.get("productName")), "%" + keyword.toLowerCase() + "%"),
+                    cb.like(cb.lower(root.get("description")), "%" + keyword.toLowerCase() + "%")
+            ));
         }
+
+        // Category filter
         if (category != null && !category.isEmpty()) {
-            spec = spec.and((root, query, cb) -> cb.like(root.get("category").get("categoryName"), category));
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("category").get("categoryName")),
+                    "%" + category.toLowerCase() + "%"));
+        }
+
+        // Price range filter
+        if (minPrice != null) {
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("specialPrice"), minPrice));
+        }
+        if (maxPrice != null) {
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("specialPrice"), maxPrice));
         }
 
         Page<Product> pageProducts = productRepository.findAll(spec, pageDetails);
@@ -147,7 +173,70 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductDTO updateProductImage(Long productId, MultipartFile image) throws IOException {
-        return null; // Giữ nguyên cấu trúc chờ làm phần file
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+
+        // Validate file
+        if (image.isEmpty()) {
+            throw new IllegalArgumentException("Image file is empty");
+        }
+
+        String contentType = image.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new IllegalArgumentException("File must be an image (JPEG, PNG, WebP, etc.)");
+        }
+
+        // Create upload directory if it doesn't exist
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // Generate unique filename: UUID + original extension
+        String originalFilename = image.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+        String newFilename = UUID.randomUUID() + extension;
+
+        // Save file
+        Path filePath = uploadPath.resolve(newFilename);
+        Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+        // Delete old image file (if not default)
+        String oldImage = product.getImage();
+        if (oldImage != null && !oldImage.equals("default.png")) {
+            Path oldPath = uploadPath.resolve(oldImage);
+            Files.deleteIfExists(oldPath);
+        }
+
+        // Update product
+        product.setImage(newFilename);
+        Product savedProduct = productRepository.save(product);
+
+        ProductDTO dto = modelMapper.map(savedProduct, ProductDTO.class);
+        dto.setImage(constructImageUrl(newFilename));
+        return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductSuggestionDTO> getSearchSuggestions(String query, int limit) {
+        if (query == null || query.trim().length() < 1) {
+            return List.of();
+        }
+
+        Pageable pageable = PageRequest.of(0, limit);
+        List<Product> products = productRepository.findSuggestions(query.trim(), pageable);
+
+        return products.stream().map(p -> new ProductSuggestionDTO(
+                p.getProductId(),
+                p.getProductName(),
+                constructImageUrl(p.getImage()),
+                p.getSpecialPrice(),
+                p.getCategory() != null ? p.getCategory().getCategoryName() : null
+        )).toList();
     }
 
     // ==========================================

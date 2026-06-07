@@ -57,6 +57,7 @@ public class SecurityConfigs {
                 .httpBasic(basic -> basic.disable())
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(auth -> auth
+                        // === Always public ===
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/h2-console/**",
@@ -67,20 +68,22 @@ public class SecurityConfigs {
                                 "/api/payment/sepay-webhook")
                         .permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/categories",
-                                "/api/category/**",
+                        // === Guest-accessible: product browsing, categories, ratings, vouchers ===
+                        .requestMatchers(HttpMethod.GET,
                                 "/api/products",
-                                "/api/products/**",
-                                "/api/product/**",
-                                "/api/attributes",
-                                "/api/attributes/**",
-                                "/api/attribute/**")
+                                "/api/products/search/suggestions",
+                                "/api/categories",
+                                "/api/categories/*/products",
+                                "/api/products/keyword/**",
+                                "/api/products/*/ratings",
+                                "/api/products/*/ratings/summary",
+                                "/api/vouchers/available")
                         .permitAll()
 
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // === Static image resources ===
+                        .requestMatchers("/images/**").permitAll()
 
+                        // === All other API endpoints require authentication ===
                         .requestMatchers("/api/**").authenticated()
 
                         .anyRequest().authenticated());

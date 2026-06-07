@@ -95,8 +95,6 @@ public class CartServiceImpl implements CartService {
                 .orElseThrow(() -> new RuntimeException("Product not found in your cart"));
 
         if (quantity <= 0) {
-            // Dùng orphanRemoval: chỉ cần remove khỏi collection, KHÔNG gọi
-            // repository.delete()
             cart.getCartItems().remove(cartItem);
         } else {
             if (cartItem.getProduct().getQuantity() < quantity) {
@@ -113,19 +111,13 @@ public class CartServiceImpl implements CartService {
     @Override
     public void deleteCartItemFromCart(Long userId, Long cartItemId) {
         Cart cart = getOrCreateCart(userId);
-
         CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new ResourceNotFoundException("CartItem", "id", cartItemId));
 
-        // Kiểm tra cartItem có thuộc cart của user này không (tránh user A xóa item của
-        // user B)
         if (!cartItem.getCart().getCartId().equals(cart.getCartId())) {
             throw new IllegalArgumentException("This cart item does not belong to your cart");
         }
-
-        // Dùng orphanRemoval: remove khỏi collection, Hibernate tự xóa ở DB
         cart.getCartItems().remove(cartItem);
-
         recalculateCartTotal(cart);
         cartRepository.save(cart);
     }
@@ -133,16 +125,10 @@ public class CartServiceImpl implements CartService {
     @Override
     public void clearCart(Long userId) {
         Cart cart = getOrCreateCart(userId);
-        // Chỉ cần .clear() — orphanRemoval sẽ tự xóa tất cả ở DB
-        // KHÔNG gọi cartItemRepository.deleteAll() vì sẽ conflict với orphanRemoval
         cart.getCartItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
     }
-
-    // ==========================================
-    // HELPER METHODS
-    // ==========================================
 
     private Cart getOrCreateCart(Long userId) {
         return cartRepository.findCartByUserId(userId)
@@ -171,7 +157,6 @@ public class CartServiceImpl implements CartService {
         dto.setCartId(cart.getCartId());
         dto.setUserId(cart.getUser().getUserId());
         dto.setTotalPrice(BigDecimal.valueOf(cart.getTotalPrice()));
-
         List<CartItemDTO> itemDTOs = new ArrayList<>();
         for (CartItem item : cart.getCartItems()) {
             CartItemDTO itemDto = new CartItemDTO();
@@ -182,7 +167,6 @@ public class CartServiceImpl implements CartService {
             BigDecimal subTotal = BigDecimal.valueOf(item.getProductPrice())
                     .multiply(BigDecimal.valueOf(item.getQuantity()));
             itemDto.setSubTotal(subTotal);
-
             Product p = item.getProduct();
             ProductDTO pDto = new ProductDTO();
             pDto.setProductId(p.getProductId());

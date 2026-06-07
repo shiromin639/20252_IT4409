@@ -18,9 +18,15 @@ import java.util.List;
 public class CheckoutPreviewDTO {
     private List<OrderItemDTO> items = new ArrayList<>();
     private BigDecimal subTotal;
-    private BigDecimal couponDiscount;
+    private BigDecimal voucherDiscount;
     private BigDecimal totalPrice;
-    private String couponCode;
-    private boolean couponValid;
-    private String couponMessage;
+
+    // Voucher info
+    private String voucherCode;
+    private boolean voucherValid;
+    private String voucherMessage;
+    private String voucherDescription;
+
+    // User's saved addresses for selection
+    private List<AddressDTO> savedAddresses = new ArrayList<>();
 }

@@ -33,19 +33,20 @@ public class Order {
     @Column(nullable = false)
     private Double totalPrice = 0.0;
 
-    // Thông tin giao hàng — snapshot tại thời điểm đặt hàng
     @Column(nullable = false)
     private String shippingAddress;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    private Voucher appliedVoucher;
+
+    private Double voucherDiscount = 0.0; // Snapshot of the discount amount at checkout time
+
     private String phoneNumber;
 
-    private String paymentMethod; // COD, BANK_TRANSFER, etc.
+    private String paymentMethod;
 
     private String notes;
-
-    private String couponCode;
-
-    private Double couponDiscount = 0.0;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -71,8 +72,10 @@ public class Order {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Order order = (Order) o;
         return orderId != null && orderId.equals(order.orderId);
     }

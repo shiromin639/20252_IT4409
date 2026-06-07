@@ -23,9 +23,15 @@ public class OrderDTO {
     private String phoneNumber;
     private String paymentMethod;
     private String notes;
-    private String couponCode;
-    private BigDecimal couponDiscount;
+
+    // Voucher info (snapshot)
+    private String voucherCode;
+    private BigDecimal voucherDiscount;
+
     private String paymentUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // Rating eligibility for user
+    private boolean canRate; // true if order is DELIVERED
 }
