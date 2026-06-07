@@ -76,29 +76,15 @@ public class AuthServiceImpl implements AuthService {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
         }
 
-        // Create new user's account
+        // Create new user's account — always assigned ROLE_USER
         User user = new User(
                 signUpRequest.getUsername(),
                 encoder.encode(signUpRequest.getPassword()),
                 signUpRequest.getPhoneNumber());
         user.setAddress(signUpRequest.getAddress());
 
-        String strRole = signUpRequest.getRole();
-        new Role();
-        Role role;
-
-        if (strRole == null) {
-            role = roleRepository.findByRoleName(AppRole.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-        } else {
-            if (strRole.equals("admin")) {
-                role = roleRepository.findByRoleName(AppRole.ROLE_ADMIN)
-                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            } else {
-                role = roleRepository.findByRoleName(AppRole.ROLE_USER)
-                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            }
-        }
+        Role role = roleRepository.findByRoleName(AppRole.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
 
         user.setRole(role);
         userRepository.save(user);

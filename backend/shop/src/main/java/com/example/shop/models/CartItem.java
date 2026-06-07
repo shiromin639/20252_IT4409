@@ -1,13 +1,14 @@
 package com.example.shop.models;
 
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Data
+@Getter
+@Setter
 @Table(name = "cart_items")
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,4 +28,19 @@ public class CartItem {
     private Integer quantity;
     private double discount;
     private double productPrice;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        CartItem cartItem = (CartItem) o;
+        return cartItemId != null && cartItemId.equals(cartItem.cartItemId);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
 }

@@ -41,8 +41,7 @@ public class SecurityConfigs {
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
 
-        DaoAuthenticationProvider authProvider =
-                new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
 
         authProvider.setPasswordEncoder(passwordEncoder);
 
@@ -53,52 +52,51 @@ public class SecurityConfigs {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(form -> form.disable())
                 .httpBasic(basic -> basic.disable())
-                .headers(headers ->
-                        headers.frameOptions(frame -> frame.sameOrigin())
-                )
-                .authorizeHttpRequests(auth ->
-                        auth
-                                .requestMatchers(
-                                        "/api/auth/**",
-                                        "/h2-console/**",
-                                        "/swagger-ui/**",
-                                        "/v3/api-docs/**",
-                                        "/error/**"
-                                ).permitAll()
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
+                .authorizeHttpRequests(auth -> auth
+                        // === Always public ===
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/h2-console/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/error/**",
+                                "/api/payment/sepay-webhook")
+                        .permitAll()
 
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/api/categories",
-                                        "/api/category/**",
-                                        "/api/products",
-                                        "/api/products/**",
-                                        "/api/product/**",
-                                        "/api/attributes",
-                                        "/api/attributes/**",
-                                        "/api/attribute/**"
-                                ).permitAll()
+                        // === Guest-accessible: product browsing, categories, ratings, vouchers ===
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/products",
+                                "/api/products/search/suggestions",
+                                "/api/categories",
+                                "/api/categories/*/products",
+                                "/api/products/keyword/**",
+                                "/api/products/*/ratings",
+                                "/api/products/*/ratings/summary",
+                                "/api/vouchers/available")
+                        .permitAll()
 
-                                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // === Static image resources ===
+                        .requestMatchers("/images/**").permitAll()
 
-                                .requestMatchers("/api/**").authenticated()
+                        // === All other API endpoints require authentication ===
+                        .requestMatchers("/api/**").authenticated()
 
-                                .anyRequest().authenticated()
-                );
+                        .anyRequest().authenticated());
         http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-        http.cors(cors -> {})
-                .exceptionHandling(exception ->
-                        exception.authenticationEntryPoint(unauthorizedHandler));
+        http.cors(cors -> {
+        })
+                .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler));
         return http.build();
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 }
