@@ -34,6 +34,7 @@ class User(UserBase, table=True):
     )
 
 
-class UserPublic(SQLModel):
+class UserPublic(UserBase):
     id: int
     created_at: datetime | None = None
+
