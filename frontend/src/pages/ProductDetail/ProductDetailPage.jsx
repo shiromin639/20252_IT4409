@@ -8,7 +8,7 @@ import { useWishlist } from '../../hooks'
 import { formatPrice } from '../../utils'
 import ProductCard from '../../components/product/ProductCard'
 import ProductReviews from '../../components/product/ProductReviews'
-import { StarRating, LoadingPage } from '../../components/common'
+import { StarRating, LoadingPage, Image } from '../../components/common'
 import toast from 'react-hot-toast'
 import styles from './ProductDetail.module.css'
 
@@ -107,7 +107,13 @@ export default function ProductDetailPage() {
           {/* ── GALLERY ── */}
           <div className={styles.gallery}>
             <div className={styles.mainImage}>
-              <img src={mainImage} alt={product.name || 'Product'} />
+              <Image 
+                src={mainImage} 
+                alt={product.name || 'Product'} 
+                category={product.category?.name || product.category_name || ''}
+                productName={product.name || ''}
+                brand={product.brand || product.specifications?.brand || ''}
+              />
               {discountPercent > 0 && (
                 <div className={styles.discountBadge}>-{discountPercent}%</div>
               )}
@@ -120,7 +126,13 @@ export default function ProductDetailPage() {
                     className={`${styles.thumb} ${i === activeImage ? styles.thumbActive : ''}`}
                     onClick={() => setActiveImage(i)}
                   >
-                    <img src={img} alt={`Ảnh ${i + 1}`} />
+                    <Image 
+                      src={img} 
+                      alt={`Ảnh ${i + 1}`} 
+                      category={product.category?.name || product.category_name || ''}
+                      productName={product.name || ''}
+                      brand={product.brand || product.specifications?.brand || ''}
+                    />
                   </button>
                 ))}
               </div>

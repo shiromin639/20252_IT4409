@@ -32,11 +32,12 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"http://localhost:5173", "http://localhost:3000"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders: []string{"Link"},
-		MaxAge:         300,
+		AllowedOrigins:   []string{getEnvOrDefault("FRONTEND_URL", "https://techlap.id.vn")},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
 	}))
 
 	// Setup proxies
@@ -80,6 +81,7 @@ func main() {
 
 		// Admin routes
 		r.Mount("/admin/reviews", productProxy)
+		r.Mount("/admin/search", productProxy)
 		r.Mount("/admin/emails", emailProxy)
 		r.Mount("/admin", orderProxy)
 	})

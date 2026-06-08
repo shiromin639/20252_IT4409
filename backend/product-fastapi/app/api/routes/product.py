@@ -1,6 +1,8 @@
 from app.api.deps import SessionDep
 from fastapi import APIRouter, HTTPException
-from sqlmodel import col, func, select, or_
+from app.api.deps import SessionDep, OptionalUserId
+from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks
+from sqlmodel import col, func, select, or_, text
 from sqlalchemy import cast, String
 from app.models.category import Category
 from app.models.product import (
@@ -10,14 +12,23 @@ from app.models.product import (
     ProductUpdate,
     ProductsPublic,
 )
+from app.models.search_log import SearchLog
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
 import cloudinary
 import cloudinary.uploader
 from app.core.config import settings
 from app.core.cache import get_cache, set_cache, invalidate_cache, invalidate_cache_pattern
 import hashlib
 import json
+import re
+SYNONYMS = {
+    "choi game": "gaming",
+    "game": "gaming",
+    "do hoa": "creator",
+    "đồ họa": "creator",
+    "van phong": "office",
+    "văn phòng": "office"
+}
 
 # Configure Cloudinary
 cloudinary.config(
@@ -66,6 +77,7 @@ async def create_product(session: SessionDep, product_in: ProductCreate):
 @router.get("/products", response_model=ProductsPublic)
 async def read_products(
     session: SessionDep, 
+    background_tasks: BackgroundTasks,
     skip: int = 0, 
     limit: int = 100,
     q: str | None = None,
@@ -73,7 +85,8 @@ async def read_products(
     brand: str | None = None,
     min_price: float | None = None,
     max_price: float | None = None,
-    sort_by: str | None = "newest"
+    sort_by: str | None = "newest",
+    user_id: OptionalUserId = None
 ):
     # Construct cache key based on query params
     query_params = {
@@ -96,59 +109,38 @@ async def read_products(
     query = select(Product).join(Category, isouter=True)
     
     if q:
-        import unicodedata
-        def remove_accents(input_str: str) -> str:
-            input_str = input_str.replace('đ', 'd').replace('Đ', 'D')
-            nfkd_form = unicodedata.normalize('NFKD', input_str)
-            return nfkd_form.encode('ASCII', 'ignore').decode('utf-8')
-
-        q_lower = q.lower().strip()
-        q_normalized = remove_accents(q_lower)
+        print(f"[SEARCH] Incoming query: '{q}'")
+        q_clean = q.strip().lower()
         
-        # Keyword mapping to support broader searches (using normalized keys)
-        keyword_map = {
-            "gaming": ["Gaming Laptop", "gaming"],
-            "game": ["Gaming Laptop", "gaming"],
-            "choi game": ["Gaming Laptop", "gaming"],
-            
-            "office": ["Office Laptop", "office"],
-            "van phong": ["Office Laptop", "office"],
-            
-            "ultrabook": ["Ultrabook", "ultrabook"],
-            
-            "creator": ["Creator Laptop", "creator"],
-            "do hoa": ["Creator Laptop", "creator"],
-            "designer": ["Creator Laptop", "creator"],
-            "design": ["Creator Laptop", "creator"],
-            
-            "lap trinh": ["Office Laptop", "Creator Laptop", "MacBook", "ThinkPad"],
-            "programming": ["Office Laptop", "Creator Laptop", "MacBook", "ThinkPad"],
-            "developer": ["Office Laptop", "Creator Laptop", "MacBook", "ThinkPad"],
-            
-            "hoc tap": ["Office Laptop"],
-            "sinh vien": ["Office Laptop"],
-            "student": ["Office Laptop"],
-            
-            "workstation": ["Workstation", "workstation"],
-            
-            "macbook": ["Apple", "MacBook", "macbook"],
-            "apple": ["Apple", "MacBook", "macbook"]
-        }
+        # Apply semantic translation
+        for synonym, replacement in SYNONYMS.items():
+            if synonym in q_clean:
+                q_clean = q_clean.replace(synonym, replacement)
+                
+        print(f"[SEARCH] Normalized query: '{q_clean}'")
         
-        # Default to searching both the exact lowercase query and the unaccented version
-        search_terms = keyword_map.get(q_normalized, list(set([q_lower, q_normalized])))
+        # Remove special characters to avoid FTS syntax errors
+        q_clean = re.sub(r'[^\w\s]', '', q_clean)
         
-        conditions = []
-        for term in search_terms:
-            conditions.extend([
-                col(Product.name).ilike(f"%{term}%"),
-                col(Product.description).ilike(f"%{term}%"),
-                col(Product.brand).ilike(f"%{term}%"),
-                col(Category.name).ilike(f"%{term}%"),
-                cast(Product.specifications, String).ilike(f"%{term}%")
-            ])
+        # Build prefix match string: "lap top" -> "lap:* & top:*"
+        terms = [f"{term}:*" for term in q_clean.split() if term]
+        if terms:
+            search_terms = ' & '.join(terms)
+            tsquery = func.to_tsquery('simple', func.f_unaccent(search_terms))
             
-        query = query.where(or_(*conditions))
+            # Combine FTS with ILIKE on category name for cross-entity matching
+            fts_condition = Product.search_vector.op('@@')(tsquery)
+            category_condition = func.f_unaccent(Category.name).ilike(f"%{q_clean}%")
+            
+            query = query.where(or_(fts_condition, category_condition))
+            
+            # Calculate rank and add to SELECT
+            rank = func.ts_rank(Product.search_vector, tsquery).label("rank")
+            query = query.add_columns(rank)
+            
+            # Override sort_by if q is present, order by rank DESC
+            sort_by = "rank"
+            query = query.order_by(text("rank DESC"))
     if category_id is not None:
         query = query.where(Product.category_id == category_id)
     if brand:
@@ -172,14 +164,66 @@ async def read_products(
         
     query = query.offset(skip).limit(limit)
     
-    products = await session.exec(query)
+    if q:
+        from app.core.db import engine
+        compiled_query = query.compile(engine, compile_kwargs={"literal_binds": False})
+        print(f"[SEARCH] Generated SQL:\n{compiled_query}")
+    
+    products = await session.execute(query)
     products = products.all()
-    products_public = [ProductPublic.model_validate(product) for product in products]
+    products_public = []
+    for row in products:
+        if q:
+            # When q is present, row is a tuple (Product, rank)
+            p = row[0]
+            r = row[1]
+            print(f"FTS Match: '{q}' -> Product ID: {p.id}, Name: '{p.name}', Rank: {r:.4f}")
+        else:
+            p = row[0]
+            
+        products_public.append(ProductPublic.model_validate(p))
+        
     result = ProductsPublic(data=products_public, count=count)
+    if q:
+        print(f"[SEARCH] Total results count: {count}")
     
     await set_cache(cache_key, result.model_dump(mode="json"), ttl=600)
+
+    if q and q.strip():
+        async def save_search_log(uid: int | None, keyword: str, result_count: int):
+            from app.core.db import engine
+            from sqlmodel.ext.asyncio.session import AsyncSession
+            from app.core.cache import invalidate_cache_pattern
+            
+            async with AsyncSession(engine) as bg_session:
+                log = SearchLog(user_id=uid, keyword=keyword.strip().lower(), result_count=result_count)
+                bg_session.add(log)
+                await bg_session.commit()
+                await invalidate_cache_pattern("admin:search:*")
+
+        background_tasks.add_task(save_search_log, user_id, q, count)
+
     return result
 
+
+@router.get("/products/search/suggestions", response_model=list[str])
+async def search_suggestions(session: SessionDep, q: str):
+    if not q or len(q.strip()) < 2:
+        return []
+        
+    q_clean = q.strip()
+    
+    # We use basic ILIKE prefix match on name for quick autocomplete suggestions
+    # You can later replace this with trigram search if typo-tolerance is needed.
+    query = (
+        select(Product.name)
+        .where(col(Product.name).ilike(f"%{q_clean}%"))
+        .limit(10)
+    )
+    
+    names = await session.exec(query)
+    # Deduplicate and return
+    return list(dict.fromkeys(names.all()))
 
 @router.get("/brands", response_model=list[str])
 async def read_brands(session: SessionDep):

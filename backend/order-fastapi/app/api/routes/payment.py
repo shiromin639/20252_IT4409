@@ -113,7 +113,7 @@ def vnpay_return(request: Request, session: SessionDep, background_tasks: Backgr
     expected_hash = h.hexdigest()
     
     if vnp_SecureHash != expected_hash:
-        return RedirectResponse(url="http://localhost:5173/payment/vnpay/return?success=false&error=invalid_signature")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/payment/vnpay/return?success=false&error=invalid_signature")
         
     response_code = input_data.get("vnp_ResponseCode", "")
     order_id = input_data.get("vnp_TxnRef", "")
@@ -138,9 +138,9 @@ def vnpay_return(request: Request, session: SessionDep, background_tasks: Backgr
             }
             background_tasks.add_task(email_client.send_payment_success, email_payload)
             
-        return RedirectResponse(url=f"http://localhost:5173/payment/vnpay/return?success=true&order_id={order_id}")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/payment/vnpay/return?success=true&order_id={order_id}")
     else:
-        return RedirectResponse(url=f"http://localhost:5173/payment/vnpay/return?success=false&order_id={order_id}&error_code={response_code}")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/payment/vnpay/return?success=false&order_id={order_id}&error_code={response_code}")
 
 @router.get("/vnpay/ipn")
 def vnpay_ipn(request: Request, session: SessionDep, background_tasks: BackgroundTasks):

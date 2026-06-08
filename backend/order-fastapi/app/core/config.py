@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     )
 
     PROJECT_NAME: str
+    FRONTEND_URL: str
     SENTRY_DSN: HttpUrl | None = None
     POSTGRES_SERVER: str
     POSTGRES_PORT: int = 5432
@@ -20,11 +21,11 @@ class Settings(BaseSettings):
     # VNPay Sandbox Configuration
     VNPAY_TMN_CODE: str
     VNPAY_HASH_SECRET: str
-    VNPAY_RETURN_URL: str
-    VNPAY_PAYMENT_URL: str
+    VNPAY_RETURN_URL: str = "https://techlap.id.vn/payment/vnpay/return"
+    VNPAY_PAYMENT_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
 
     # SMTP Configuration
-    SMTP_HOST: str = "sandbox.smtp.mailtrap.io"
+    SMTP_HOST: str
     SMTP_PORT: int = 2525
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""

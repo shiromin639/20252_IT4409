@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { selectCartItems, selectCartTotal, clearCartAsync } from '../../store/cartSlice'
 import { selectUser } from '../../store/authSlice'
+import { Image } from '../../components/common'
 import { orderApi } from '../../services/api'
 import { formatPrice } from '../../utils'
 import toast from 'react-hot-toast'
@@ -317,7 +318,13 @@ export default function CheckoutPage() {
                 {items.map(item => (
                   <div key={item.id} className={styles.orderItem}>
                     <div className={styles.orderItemImg}>
-                      <img src={item.image_url || item.image || item.specifications?.image_url || item.specs?.image_url || 'https://via.placeholder.com/150?text=Laptop'} alt={item.name || 'Product'} />
+                      <Image 
+                        src={item.image_url || item.image || item.specifications?.image_url || item.specs?.image_url} 
+                        alt={item.name || 'Product'} 
+                        category={item.category?.name || item.category_name || ''}
+                        productName={item.name || ''}
+                        brand={item.brand || item.specifications?.brand || ''}
+                      />
                       <span className={styles.orderItemQty}>{item.quantity}</span>
                     </div>
                     <div className={styles.orderItemInfo}>

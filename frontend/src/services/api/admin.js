@@ -8,6 +8,10 @@ export const adminApi = {
     return apiClient.get('/admin/stats');
   },
   
+  getDashboardData: async () => {
+    return apiClient.get('/admin/dashboard');
+  },
+  
   getDailyRevenue: async () => {
     return apiClient.get('/admin/revenue/daily');
   },
@@ -38,6 +42,22 @@ export const adminApi = {
 
   getEmailActivity: async () => {
     return apiClient.get('/admin/emails/activity');
+  },
+
+  getSearchStats: async () => {
+    return apiClient.get('/admin/search/stats');
+  },
+
+  getSearchTopKeywords: async () => {
+    return apiClient.get('/admin/search/top-keywords');
+  },
+
+  getSearchNoResults: async () => {
+    return apiClient.get('/admin/search/no-results');
+  },
+
+  getSearchTrends: async () => {
+    return apiClient.get('/admin/search/trends');
   },
 
   /**

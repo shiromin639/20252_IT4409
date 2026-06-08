@@ -27,6 +27,7 @@ import AdminDashboard, {
   AdminReviews,
 } from './pages/Admin/AdminDashboard'
 import EmailActivity from './pages/Admin/EmailActivity'
+import AdminSearchAnalytics from './pages/Admin/AdminSearchAnalytics'
 
 // Static Pages (Information & Policies)
 import AboutPage from './pages/Information/AboutPage'
@@ -147,6 +148,7 @@ export default function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="reviews" element={<AdminReviews />} />
               <Route path="emails" element={<EmailActivity />} />
+              <Route path="search" element={<AdminSearchAnalytics />} />
             </Route>
 
             {/* Fallback */}

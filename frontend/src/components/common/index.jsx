@@ -132,3 +132,4 @@ export function SkeletonCard() {
 }
 
 export { ErrorBoundary } from './ErrorBoundary'
+export { default as Image } from './Image';

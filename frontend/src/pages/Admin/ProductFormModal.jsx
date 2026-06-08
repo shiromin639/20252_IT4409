@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
 import { productApi, adminApi } from '../../services/api';
 import toast from 'react-hot-toast';
+import { Image } from '../../components/common';
 import styles from './Admin.module.css';
 
 export default function ProductFormModal({ isOpen, onClose, onSuccess, initialData = null }) {
@@ -173,7 +174,7 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
             <div className={styles.imageUploadArea}>
               {imagePreview ? (
                 <div className={styles.imagePreviewWrapper}>
-                  <img src={imagePreview} alt="Preview" className={styles.imagePreview} />
+                  <Image src={imagePreview} alt="Preview" className={styles.imagePreview} />
                   <button type="button" onClick={() => {setImagePreview(''); setImageFile(null)}} className={styles.removeImageBtn}>
                     <X size={16} />
                   </button>

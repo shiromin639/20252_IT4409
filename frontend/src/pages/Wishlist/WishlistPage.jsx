@@ -5,7 +5,7 @@ import { Heart, ShoppingCart, Trash2, ChevronRight } from 'lucide-react'
 import { selectWishlistItems, toggleWishlistAsync, fetchWishlist } from '../../store/wishlistSlice'
 import { addToCartAsync } from '../../store/cartSlice'
 import { formatPrice } from '../../utils'
-import { LoadingPage } from '../../components/common'
+import { LoadingPage, Image } from '../../components/common'
 import styles from './WishlistPage.module.css'
 
 export default function WishlistPage() {
@@ -66,9 +66,12 @@ export default function WishlistPage() {
               return (
                 <div key={product.id} className={styles.card}>
                   <Link to={`/products/${product.id}`} className={styles.imageWrap}>
-                    <img 
-                      src={product.images?.[0] || product.image_url || product.image || product.specifications?.image_url || product.specs?.image_url || 'https://via.placeholder.com/200x200?text=Laptop'} 
+                    <Image 
+                      src={product.images?.[0] || product.image_url || product.image || product.specifications?.image_url || product.specs?.image_url} 
                       alt={product.name} 
+                      category={product.category?.name || product.category_name || ''}
+                      productName={product.name || ''}
+                      brand={product.brand || product.specifications?.brand || ''}
                     />
                   </Link>
                   

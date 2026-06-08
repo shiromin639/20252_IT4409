@@ -124,3 +124,14 @@ async def get_available_quantity(session: SessionDep, product_id: int):
         )
 
     return inventory
+
+@router.get("/inventory/low-stock", response_model=list[InventoryPublic])
+async def get_low_stock(session: SessionDep, threshold: int = 10):
+    statement = (
+        select(Inventory)
+        .where((Inventory.quantity - Inventory.reserved_quantity) < threshold)
+        .order_by(Inventory.quantity - Inventory.reserved_quantity)
+        .limit(20)
+    )
+    inventories = session.exec(statement).all()
+    return inventories

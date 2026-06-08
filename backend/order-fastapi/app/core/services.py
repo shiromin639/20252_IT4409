@@ -101,3 +101,14 @@ class InventoryService:
             urllib.request.urlopen(req)
         except Exception:
             pass # Best effort
+
+    @classmethod
+    def get_low_stock(cls, threshold: int = 10) -> list:
+        url = f"{cls.BASE_URL}/low-stock?threshold={threshold}"
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req) as response:
+                return json.loads(response.read().decode())
+        except Exception as e:
+            print(f"Warning: Failed to fetch low stock inventory: {str(e)}")
+            return []

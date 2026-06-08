@@ -8,7 +8,7 @@ from app.core.cache import get_cache, set_cache
 from app.api.deps import SessionDep
 from app.models.order import Order
 from app.models.order_item import OrderItem
-from app.core.services import ProductService, UserService
+from app.core.services import ProductService, UserService, InventoryService
 
 router = APIRouter(tags=["admin"])
 
@@ -162,3 +162,108 @@ async def get_revenue_by_brand(session: SessionDep) -> List[Dict[str, Any]]:
     data = await run_in_threadpool(_fetch)
     await set_cache(cache_key, data, 300)
     return data
+
+@router.get("/dashboard")
+async def get_dashboard(session: SessionDep) -> Dict[str, Any]:
+    cache_key = "admin:dashboard"
+    cached = await get_cache(cache_key)
+    if cached:
+        return cached
+
+    def _fetch():
+        # 1. Total revenue
+        rev_statement = select(func.sum(Order.total_amount)).where(Order.payment_status == "PAID")
+        total_revenue = float(session.exec(rev_statement).one() or 0)
+        
+        # 2. Total orders
+        total_orders = session.exec(select(func.count(Order.id))).one() or 0
+        
+        # 3. External counts
+        total_users = UserService.get_total_users() or 0
+        products_response = ProductService.get_all_products() or {"data": [], "count": 0}
+        total_products = products_response.get("count", 0)
+        product_map = {p["id"]: p for p in products_response.get("data", [])}
+        
+        # 4. Revenue last 7 days
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        daily_rev_statement = (
+            select(
+                func.date(Order.created_at).label("date"),
+                func.sum(Order.total_amount).label("revenue")
+            )
+            .where(Order.payment_status == "PAID")
+            .where(Order.created_at >= seven_days_ago)
+            .group_by(func.date(Order.created_at))
+            .order_by(func.date(Order.created_at).asc())
+        )
+        daily_results = session.exec(daily_rev_statement).all()
+        revenue_last_7_days = [{"date": str(row.date), "revenue": float(row.revenue)} for row in daily_results]
+
+        # 5. Recent orders
+        recent_statement = select(Order).order_by(Order.created_at.desc()).limit(5)
+        recent_orders = [
+            {
+                "id": o.id,
+                "user_id": o.user_id,
+                "total_amount": float(o.total_amount),
+                "status": o.status,
+                "created_at": o.created_at.isoformat() if o.created_at else None
+            }
+            for o in session.exec(recent_statement).all()
+        ]
+
+        # 6. Top products
+        sold_col = func.sum(OrderItem.quantity).label("sold")
+        rev_col = func.sum(OrderItem.quantity * OrderItem.unit_price).label("revenue")
+        top_statement = (
+            select(OrderItem.product_id, sold_col, rev_col)
+            .join(Order, Order.id == OrderItem.order_id)
+            .where(Order.payment_status == "PAID")
+            .group_by(OrderItem.product_id)
+            .order_by(sold_col.desc())
+            .limit(5)
+        )
+        top_results = session.exec(top_statement).all()
+        top_products = [
+            {
+                "product_id": row.product_id,
+                "product_name": product_map.get(row.product_id, {}).get("name", f"Product #{row.product_id}"),
+                "sold": int(row.sold),
+                "revenue": float(row.revenue)
+            }
+            for row in top_results
+        ]
+
+        # 7. Low stock products
+        low_stock_raw = InventoryService.get_low_stock(10)
+        low_stock_products = []
+        for inv in low_stock_raw:
+            pid = inv.get("product_id")
+            rem = inv.get("quantity", 0) - inv.get("reserved_quantity", 0)
+            low_stock_products.append({
+                "product_id": pid,
+                "product_name": product_map.get(pid, {}).get("name", f"Product #{pid}"),
+                "remaining": rem
+            })
+
+        # 8. Order status summary
+        status_statement = select(Order.status, func.count(Order.id)).group_by(Order.status)
+        status_results = session.exec(status_statement).all()
+        order_status_summary = [{"status": row[0], "count": row[1]} for row in status_results]
+
+        return {
+            "totalRevenue": total_revenue,
+            "totalOrders": total_orders,
+            "totalProducts": total_products,
+            "totalUsers": total_users,
+            "revenueLast7Days": revenue_last_7_days,
+            "recentOrders": recent_orders,
+            "topProducts": top_products,
+            "lowStockProducts": low_stock_products,
+            "orderStatusSummary": order_status_summary
+        }
+        
+    data = await run_in_threadpool(_fetch)
+    await set_cache(cache_key, data, 300)
+    return data
+

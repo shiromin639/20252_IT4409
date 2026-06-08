@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, Zap, Shield, Truck, HeadphonesIcon, Star, Monitor, Cpu, Mouse, Keyboard, Briefcase, ZapIcon } from 'lucide-react'
 import { productApi } from '../../services/api'
 import ProductCard from '../../components/product/ProductCard'
-import { SkeletonCard } from '../../components/common'
+import { SkeletonCard, Image } from '../../components/common'
 import styles from './Home.module.css'
 
 const categories = [
@@ -80,7 +80,7 @@ export default function HomePage() {
           <div className={styles.mainContent}>
             {/* Hero Carousel */}
             <div className={styles.hero}>
-              <img src={banners[currentBanner].image} className={styles.heroImage} alt="Banner" />
+              <Image src={banners[currentBanner].image} className={styles.heroImage} alt="Banner" category={banners[currentBanner].link.includes('gaming') ? 'gaming' : 'macbook'} />
               <div className={styles.heroOverlay}>
                 <h1 className={styles.heroTitle}>{banners[currentBanner].title}</h1>
                 <p className={styles.heroSubtitle}>{banners[currentBanner].subtitle}</p>
@@ -98,13 +98,13 @@ export default function HomePage() {
             {/* Promo Banners (Under Hero) */}
             <div className={styles.promoBanners}>
               <Link to="/products?brand=asus" className={styles.promoCard}>
-                <img src="https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400&q=80" alt="Promo" className={styles.promoImg} />
+                <Image src="https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400&q=80" alt="Promo" className={styles.promoImg} brand="asus" />
               </Link>
               <Link to="/products?category=gaming" className={styles.promoCard}>
-                <img src="https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400&q=80" alt="Promo" className={styles.promoImg} />
+                <Image src="https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400&q=80" alt="Promo" className={styles.promoImg} category="gaming" />
               </Link>
               <Link to="/products?category=ultrabook" className={styles.promoCard}>
-                <img src="https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=400&q=80" alt="Promo" className={styles.promoImg} />
+                <Image src="https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=400&q=80" alt="Promo" className={styles.promoImg} category="ultrabook" />
               </Link>
             </div>
           </div>

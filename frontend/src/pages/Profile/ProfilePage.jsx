@@ -5,6 +5,7 @@ import { User, Package, Lock, Edit2, Check, X } from 'lucide-react'
 import { selectUser, updateProfile } from '../../store/authSlice'
 import { orderApi } from '../../services/api'
 import { formatPrice, formatDate, getStatusLabel } from '../../utils'
+import { Image } from '../../components/common'
 import toast from 'react-hot-toast'
 import styles from './Profile.module.css'
 
@@ -186,10 +187,11 @@ export default function ProfilePage() {
                           
                           <div style={{ padding: '16px', display: 'flex', gap: '12px', overflowX: 'auto' }}>
                             {order.items.slice(0, 4).map(item => (
-                              <img 
+                              <Image 
                                 key={item.id} 
-                                src={item.image_url || 'https://via.placeholder.com/60'} 
-                                alt={item.name} 
+                                src={item.image_url} 
+                                alt={item.name}
+                                productName={item.name || ''} 
                                 style={{ width: '60px', height: '60px', objectFit: 'contain', border: '1px solid var(--color-border)', borderRadius: '8px' }}
                               />
                             ))}

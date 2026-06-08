@@ -56,11 +56,19 @@ export const productApi = {
     return apiClient.get(`/products/${id}`);
   },
 
-  /**
-   * Fetches all unique brands.
-   */
   getBrands: async () => {
     return apiClient.get('/brands');
+  },
+
+  /**
+   * Fetches search suggestions for the autocomplete UI.
+   * @param {string} query 
+   * @param {AbortSignal} signal 
+   */
+  getSearchSuggestions: async (query, signal) => {
+    return apiClient.get(`/products/search/suggestions?q=${encodeURIComponent(query)}`, {
+      signal
+    });
   },
 
   /**

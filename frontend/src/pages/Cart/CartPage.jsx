@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight, Tag } from 'lucide-react'
 import { selectCartItems, selectCartTotal, removeFromCartAsync, updateQuantityAsync } from '../../store/cartSlice'
+import { Image } from '../../components/common'
 import { formatPrice } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Cart.module.css'
@@ -47,7 +48,13 @@ export default function CartPage() {
             {items.map(item => (
               <div key={item.id} className={styles.item}>
                 <Link to={`/products/${item.id}`} className={styles.itemImage}>
-                  <img src={item.image_url || item.image || item.specifications?.image_url || item.specs?.image_url || 'https://via.placeholder.com/150?text=Laptop'} alt={item.name || 'Product'} />
+                  <Image 
+                    src={item.image_url || item.image || item.specifications?.image_url || item.specs?.image_url} 
+                    alt={item.name || 'Product'} 
+                    category={item.category?.name || item.category_name || ''}
+                    productName={item.name || ''}
+                    brand={item.brand || item.specifications?.brand || ''}
+                  />
                 </Link>
 
                 <div className={styles.itemInfo}>

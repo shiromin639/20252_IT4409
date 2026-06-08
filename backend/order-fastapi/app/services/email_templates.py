@@ -3,7 +3,7 @@ from typing import Dict, Any, List
 
 def format_currency(amount: float) -> str:
     return f"{amount:,.0f} VND".replace(",", ".")
-
+from app.core.config import settings
 def format_date(date_str: str) -> str:
     try:
         # Assuming ISO format like "2023-10-27T10:00:00"
@@ -152,7 +152,7 @@ def get_order_confirmation_template(payload: Dict[str, Any]) -> str:
     </table>
     
     <div style="text-align: center;">
-        <a href="http://localhost:5173/profile/orders/{payload.get('order_id')}" style="display: inline-block; background-color: #e60012; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-weight: 600; font-size: 16px; transition: background-color 0.3s;">Xem đơn hàng</a>
+        <a href="{settings.FRONTEND_URL}/profile/orders/{payload.get('order_id')}" style="display: inline-block; background-color: #e60012; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-weight: 600; font-size: 16px; transition: background-color 0.3s;">Xem đơn hàng</a>
     </div>
     """
     return _get_base_html("Xác nhận đơn hàng", content)
@@ -185,7 +185,7 @@ def get_payment_success_template(payload: Dict[str, Any]) -> str:
     </table>
     
     <div style="text-align: center;">
-        <a href="http://localhost:5173/profile/orders/{payload.get('order_id')}" style="display: inline-block; background-color: #e60012; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-weight: 600; font-size: 16px;">Xem đơn hàng</a>
+        <a href="{settings.FRONTEND_URL}/profile/orders/{payload.get('order_id')}" style="display: inline-block; background-color: #e60012; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-weight: 600; font-size: 16px;">Xem đơn hàng</a>
     </div>
     """
     return _get_base_html("Thanh toán thành công", content)
@@ -222,7 +222,7 @@ def get_shipping_status_template(payload: Dict[str, Any]) -> str:
     </div>
     
     <div style="text-align: center;">
-        <a href="http://localhost:5173/profile/orders/{payload.get('order_id')}" style="display: inline-block; background-color: #e60012; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-weight: 600; font-size: 16px;">Theo dõi đơn hàng</a>
+        <a href="{settings.FRONTEND_URL}/profile/orders/{payload.get('order_id')}" style="display: inline-block; background-color: #e60012; color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 6px; font-weight: 600; font-size: 16px;">Theo dõi đơn hàng</a>
     </div>
     """
     return _get_base_html(title, content)

@@ -1,8 +1,13 @@
 import axios from 'axios';
 
 // Create a reusable API client instance
+const API_URL = import.meta.env.VITE_API_URL;
+if (!API_URL) {
+  console.error("VITE_API_URL is not defined in environment variables!");
+}
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/v1',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },

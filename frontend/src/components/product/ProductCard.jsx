@@ -5,6 +5,7 @@ import { addToCartAsync } from '../../store/cartSlice'
 import { useWishlist } from '../../hooks'
 import { formatPrice } from '../../utils'
 import toast from 'react-hot-toast'
+import { Image } from '../common'
 import styles from './ProductCard.module.css'
 
 export default function ProductCard({ product, index = 0 }) {
@@ -53,11 +54,13 @@ export default function ProductCard({ product, index = 0 }) {
 
       {/* Image */}
       <div className={styles.imageWrap}>
-        <img
-          src={product.images?.[0] || product.image_url || product.image || product.specifications?.image_url || product.specs?.image_url || 'https://via.placeholder.com/400x300?text=Laptop'}
+        <Image
+          src={product.images?.[0] || product.image_url || product.image || product.specifications?.image_url || product.specs?.image_url}
           alt={product.name || 'Product'}
+          category={product.category?.name || product.category_name || ''}
+          productName={product.name || ''}
+          brand={product.brand || product.specifications?.brand || ''}
           className={styles.image}
-          loading="lazy"
         />
         <div className={styles.imageOverlay}>
           <button className={styles.quickAdd} onClick={handleAddToCart}>

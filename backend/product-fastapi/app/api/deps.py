@@ -1,5 +1,5 @@
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import Annotated, Any, AsyncGenerator
@@ -35,3 +35,21 @@ async def get_current_user_id(token: TokenDep) -> int:
         )
 
 CurrentUserId = Annotated[int, Depends(get_current_user_id)]
+
+async def get_optional_user_id(request: Request) -> int | None:
+    auth = request.headers.get("Authorization")
+    if not auth:
+        return None
+    scheme, _, param = auth.partition(" ")
+    if scheme.lower() != "bearer":
+        return None
+    try:
+        payload = jwt.decode(
+            param, settings.SECRET_KEY, algorithms=[ALGORITHM]
+        )
+        user_id = payload.get("sub")
+        return int(user_id) if user_id else None
+    except Exception:
+        return None
+
+OptionalUserId = Annotated[int | None, Depends(get_optional_user_id)]

@@ -5,6 +5,7 @@ import { ArrowLeft, Package, CheckCircle, Truck, MapPin, CreditCard, RotateCcw, 
 import { orderApi } from '../../services/api'
 import { selectUser } from '../../store/authSlice'
 import { addToCartAsync } from '../../store/cartSlice'
+import { Image } from '../../components/common'
 import { formatPrice, formatDate, getStatusLabel } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Order.module.css'
@@ -154,9 +155,10 @@ export default function OrderDetailPage() {
               <div className={styles.itemsList}>
                 {items.map(item => (
                   <div key={item.id} className={styles.item}>
-                    <img 
-                      src={item.image_url || 'https://via.placeholder.com/150'} 
+                    <Image 
+                      src={item.image_url} 
                       alt={item.product_name} 
+                      productName={item.product_name || ''}
                       className={styles.itemImage} 
                     />
                     <div className={styles.itemInfo}>

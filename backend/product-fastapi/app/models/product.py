@@ -13,7 +13,9 @@ from sqlmodel import (
     Numeric,
     SQLModel,
     text,
+    Computed
 )
+from sqlalchemy.dialects.postgresql import TSVECTOR
 
 if TYPE_CHECKING:
     from .category import Category
@@ -58,6 +60,18 @@ class Product(ProductBase, table=True):
             DateTime(timezone=True), server_default=text("now()"), nullable=False
         ),
     )
+    
+    search_vector: Any | None = Field(
+        default=None,
+        sa_column=Column(
+            TSVECTOR,
+            Computed(
+                "to_tsvector('simple', f_unaccent(coalesce(name, '') || ' ' || coalesce(brand, '') || ' ' || coalesce(description, '')))",
+                persisted=True
+            )
+        )
+    )
+
     category: "Category" = Relationship(back_populates="products")
     reviews: list["Review"] = Relationship(back_populates="product")
 

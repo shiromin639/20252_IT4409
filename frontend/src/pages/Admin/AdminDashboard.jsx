@@ -12,6 +12,7 @@ import { formatPrice, formatDate, getStatusLabel } from '../../utils'
 import toast from 'react-hot-toast'
 import styles from './Admin.module.css'
 import ProductFormModal from './ProductFormModal'
+import { Image } from '../../components/common'
 import { LineChart, Line, PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
 
 // ── SIDEBAR ──
@@ -33,6 +34,7 @@ function AdminSidebar() {
     { to: '/admin/users', label: 'Người dùng', icon: <Users size={17} /> },
     { to: '/admin/reviews', label: 'Đánh giá', icon: <Star size={17} /> },
     { to: '/admin/emails', label: 'Email', icon: <Mail size={17} /> },
+    { to: '/admin/search', label: 'Tìm kiếm', icon: <Search size={17} /> },
   ]
 
   return (
@@ -90,137 +92,176 @@ function StatCard({ label, value, icon, trend, color = 'primary' }) {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export function AdminHome() {
-  const [stats, setStats] = useState({ total_revenue: 0, total_orders: 0, total_products: 0, total_customers: 0 })
-  const [dailyRevenue, setDailyRevenue] = useState([])
-  const [bestSellers, setBestSellers] = useState([])
-  const [revenueByBrand, setRevenueByBrand] = useState([])
-  const [wishlistStats, setWishlistStats] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        setLoading(true)
-        const [statsRes, dailyRes, sellersRes, brandRes, wishlistRes] = await Promise.all([
-          adminApi.getStats(),
-          adminApi.getDailyRevenue(),
-          adminApi.getBestSellers(),
-          adminApi.getRevenueByBrand(),
-          adminApi.getWishlistStats()
-        ])
-        
-        setStats(statsRes.data || statsRes)
-        setDailyRevenue(dailyRes.data || dailyRes)
-        setBestSellers(sellersRes.data || sellersRes)
-        setRevenueByBrand(brandRes.data || brandRes)
-        setWishlistStats(wishlistRes.data || wishlistRes)
+        setLoading(true);
+        const res = await adminApi.getDashboardData();
+        setData(res.data || res);
       } catch (err) {
-        console.error("Failed to load analytics", err)
-        toast.error("Lỗi khi tải dữ liệu thống kê")
+        console.error("Failed to load analytics", err);
+        toast.error("Lỗi khi tải dữ liệu thống kê");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchAnalytics()
-  }, [])
+    };
+    fetchAnalytics();
+  }, []);
 
   if (loading) {
     return (
       <div className={styles.adminContent} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <div>Đang tải dữ liệu...</div>
       </div>
-    )
+    );
   }
+
+  if (!data) return null;
 
   return (
     <div className={styles.adminContent}>
       <div className={styles.contentHeader}>
-        <h1 className={styles.contentTitle}>Phân tích & Thống kê</h1>
+        <h1 className={styles.contentTitle}>Tổng quan</h1>
         <span className={styles.contentDate}>{new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
       </div>
 
       <div className={styles.statsGrid}>
-        <StatCard label="Tổng doanh thu" value={formatPrice(stats.total_revenue)} icon={<DollarSign size={20} />} trend="Từ trước đến nay" color="primary" />
-        <StatCard label="Tổng đơn hàng" value={stats.total_orders} icon={<ShoppingBag size={20} />} trend="Từ trước đến nay" color="success" />
-        <StatCard label="Tổng sản phẩm" value={stats.total_products} icon={<Package size={20} />} trend="Hoạt động" color="warning" />
-        <StatCard label="Tổng khách hàng" value={stats.total_customers} icon={<Users size={20} />} trend="Đã đăng ký" color="primary" />
+        <StatCard label="Tổng doanh thu" value={formatPrice(data.totalRevenue)} icon={<DollarSign size={20} />} trend="Từ trước đến nay" color="primary" />
+        <StatCard label="Tổng đơn hàng" value={data.totalOrders} icon={<ShoppingBag size={20} />} trend="Từ trước đến nay" color="success" />
+        <StatCard label="Tổng sản phẩm" value={data.totalProducts} icon={<Package size={20} />} trend="Hoạt động" color="warning" />
+        <StatCard label="Khách hàng" value={data.totalUsers} icon={<Users size={20} />} trend="Đã đăng ký" color="primary" />
       </div>
 
       <div className={styles.recentGrid} style={{ marginTop: '2rem' }}>
         <div className={styles.recentCard} style={{ gridColumn: 'span 2' }}>
           <h3 className={styles.recentTitle}>Doanh thu 7 ngày gần nhất</h3>
           <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <LineChart data={dailyRevenue} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                <XAxis dataKey="date" stroke="#6b7280" fontSize={12} tickLine={false} />
-                <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
-                <Tooltip formatter={(value) => formatPrice(value)} labelStyle={{ color: '#374151' }} />
-                <Line type="monotone" dataKey="revenue" name="Doanh thu" stroke="var(--color-primary)" strokeWidth={3} dot={{ r: 4, fill: "var(--color-primary)" }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
+            {data.revenueLast7Days?.length > 0 ? (
+              <ResponsiveContainer>
+                <LineChart data={data.revenueLast7Days} margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="date" stroke="#6b7280" fontSize={12} tickLine={false} />
+                  <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
+                  <Tooltip formatter={(value) => formatPrice(value)} labelStyle={{ color: '#374151' }} />
+                  <Line type="monotone" dataKey="revenue" name="Doanh thu" stroke="var(--color-primary)" strokeWidth={3} dot={{ r: 4, fill: "var(--color-primary)" }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#6b7280'}}>Không có dữ liệu doanh thu gần đây</div>
+            )}
           </div>
         </div>
 
         <div className={styles.recentCard}>
-          <h3 className={styles.recentTitle}>Doanh thu theo thương hiệu</h3>
+          <h3 className={styles.recentTitle}>Trạng thái đơn hàng</h3>
           <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={revenueByBrand} dataKey="revenue" nameKey="brand" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
-                  {revenueByBrand.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatPrice(value)} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className={styles.recentCard}>
-          <h3 className={styles.recentTitle}>Top 10 sản phẩm bán chạy nhất</h3>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <BarChart data={bestSellers} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" />
-                <XAxis type="number" stroke="#6b7280" fontSize={12} hide />
-                <YAxis dataKey="product_name" type="category" stroke="#6b7280" fontSize={11} width={100} tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '...' : value} />
-                <Tooltip cursor={{fill: '#f3f4f6'}} formatter={(value) => [`${value} sản phẩm`, 'Đã bán']} />
-                <Bar dataKey="sold" name="Đã bán" fill="var(--color-success)" radius={[0, 4, 4, 0]} barSize={15}>
-                  {bestSellers.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {data.orderStatusSummary?.length > 0 ? (
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={data.orderStatusSummary} dataKey="count" nameKey="status" cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5}>
+                    {data.orderStatusSummary.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#6b7280'}}>Chưa có đơn hàng</div>
+            )}
           </div>
         </div>
       </div>
 
       <div className={styles.recentGrid} style={{ marginTop: '2rem' }}>
         <div className={styles.recentCard} style={{ gridColumn: 'span 2' }}>
-          <h3 className={styles.recentTitle}>Sản phẩm yêu thích nhiều nhất</h3>
-          <div style={{ width: '100%', height: 300 }}>
-            <ResponsiveContainer>
-              <BarChart data={wishlistStats} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" />
-                <XAxis type="number" stroke="#6b7280" fontSize={12} hide />
-                <YAxis dataKey="product_name" type="category" stroke="#6b7280" fontSize={11} width={100} tickFormatter={(value) => value?.length > 15 ? value.substring(0, 15) + '...' : value} />
-                <Tooltip cursor={{fill: '#f3f4f6'}} formatter={(value) => [`${value} lượt`, 'Yêu thích']} />
-                <Bar dataKey="wishlisted_count" name="Yêu thích" fill="#ec4899" radius={[0, 4, 4, 0]} barSize={15}>
-                  {wishlistStats.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+          <h3 className={styles.recentTitle}>Đơn hàng gần đây</h3>
+          <div className={styles.tableWrap}>
+            {data.recentOrders?.length > 0 ? (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Mã đơn</th>
+                    <th>Ngày đặt</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recentOrders.map(order => (
+                    <tr key={order.id}>
+                      <td><strong>#{order.id}</strong></td>
+                      <td>{formatDate(order.created_at)}</td>
+                      <td className={styles.priceCell}>{formatPrice(order.total_amount)}</td>
+                      <td><span className="badge badge-primary">{order.status}</span></td>
+                    </tr>
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </tbody>
+              </table>
+            ) : (
+              <div style={{padding: '2rem', textAlign: 'center', color: '#6b7280'}}>Chưa có đơn hàng nào</div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.recentCard}>
+          <h3 className={styles.recentTitle}>Sản phẩm bán chạy (Top 5)</h3>
+          <div className={styles.tableWrap}>
+            {data.topProducts?.length > 0 ? (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Sản phẩm</th>
+                    <th>Đã bán</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.topProducts.map(p => (
+                    <tr key={p.product_id}>
+                      <td style={{fontSize: '13px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={p.product_name}>{p.product_name}</td>
+                      <td><span className="badge badge-success">{p.sold}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{padding: '2rem', textAlign: 'center', color: '#6b7280'}}>Chưa có dữ liệu</div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.recentCard}>
+          <h3 className={styles.recentTitle}>Cảnh báo tồn kho</h3>
+          <div className={styles.tableWrap}>
+            {data.lowStockProducts?.length > 0 ? (
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Sản phẩm</th>
+                    <th>Còn lại</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.lowStockProducts.map(p => (
+                    <tr key={p.product_id}>
+                      <td style={{fontSize: '13px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={p.product_name}>{p.product_name}</td>
+                      <td><span className="badge badge-danger">{p.remaining}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{padding: '2rem', textAlign: 'center', color: '#6b7280'}}>Kho hàng đang ổn định</div>
+            )}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ── PRODUCTS MANAGEMENT ──
@@ -298,7 +339,14 @@ export function AdminProducts() {
                 <tr key={p.id}>
                   <td>
                     <div className={styles.productCell}>
-                      <img src={p.image_url || p.image || p.specifications?.image_url || p.specs?.image_url || 'https://via.placeholder.com/150?text=Laptop'} alt={p.name || 'Product'} className={styles.productThumb} />
+                      <Image 
+                        src={p.image_url || p.image || p.specifications?.image_url || p.specs?.image_url} 
+                        alt={p.name || 'Product'} 
+                        category={p.category?.name || p.category_name || ''}
+                        productName={p.name || ''}
+                        brand={p.brand || p.specifications?.brand || ''}
+                        className={styles.productThumb} 
+                      />
                       <span className={styles.productName}>{p.name}</span>
                     </div>
                   </td>
