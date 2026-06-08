@@ -114,3 +114,6 @@ test_*.py
 send_test_email.py
 fetch_monthly_revenue.py
 seed_analytics.py
+
+# Markdown files
+*.md
