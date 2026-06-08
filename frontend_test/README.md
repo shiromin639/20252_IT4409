@@ -1,16 +1,46 @@
-# React + Vite
+# TechMall frontend test
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React/Vite frontend cho các luồng backend hiện có:
 
-Currently, two official plugins are available:
+- Products/Categories: xem danh sách, lọc, sắp xếp, pagination, xem chi tiết.
+- Cart: thêm sản phẩm, cập nhật số lượng, xóa từng item, xóa giỏ.
+- Checkout/Orders: tạo đơn hàng theo payload `OrderCreate`.
+- Inventory: frontend đã có chỗ gọi theo product id, hiện chủ yếu hiển thị tồn kho từ dữ liệu sản phẩm.
+- Voucher/Rating: backend chưa có endpoint riêng, nên đang xử lý local. Rating chỉ mở với đơn `delivered`.
+- Pages: `/`, `/products`, `/products/:id`, `/cart`, `/checkout`, `/orders`, `/orders/:id`, `/login`, `/profile`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Chạy local:
 
-## React Compiler
+```bash
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Nếu backend đang chạy, đặt các biến môi trường:
 
-## Expanding the ESLint configuration
+```bash
+VITE_PRODUCT_API_URL=http://localhost:<product-port>
+VITE_CART_API_URL=http://localhost:<cart-port>
+VITE_ORDER_API_URL=http://localhost:<order-port>
+VITE_INVENTORY_API_URL=http://localhost:<inventory-port>
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Không đặt biến môi trường thì app tự dùng mock fallback để xem đầy đủ UI.
+
+## Folder structure
+
+```txt
+src/
+  api/                 # client gọi product/cart/order/inventory service
+  components/
+    cart/              # giỏ hàng và quantity stepper
+    catalog/           # listing, filter, card, detail, media
+    checkout/          # form thanh toán, voucher, tổng đơn
+    layout/            # header/navigation
+    orders/            # lịch sử đơn và rating
+  constants/           # config UI, trạng thái, filter mặc định
+  data/                # mock fallback khi backend chưa chạy
+  hooks/               # storefront/cart/rating state
+  pages/               # route-level pages
+  utils/               # format tiền, normalize API, voucher, order payload
+```
