@@ -38,6 +38,7 @@ export const productApi = {
     }
     
     if (filters.brand && filters.brand !== 'all') params.append('brand', filters.brand);
+    if (filters.ram) params.append('ram', filters.ram);
     if (filters.minPrice) params.append('min_price', filters.minPrice);
     if (filters.maxPrice) params.append('max_price', filters.maxPrice);
     

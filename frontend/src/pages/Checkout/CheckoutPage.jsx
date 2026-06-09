@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import {
   CheckCircle, CreditCard, Banknote, MapPin, User, Phone,
-  Copy, Check, RefreshCw, Clock, AlertCircle, ChevronDown, ChevronUp,
+  Copy, Check, RefreshCw, Clock, AlertCircle, ChevronDown, ChevronUp, Mail
 } from 'lucide-react'
 import { selectCartItems, selectCartTotal, clearCartAsync } from '../../store/cartSlice'
 import { selectUser } from '../../store/authSlice'
@@ -36,7 +36,13 @@ export default function CheckoutPage() {
   const items = useSelector(selectCartItems)
   const total = useSelector(selectCartTotal)
 
-  const [form, setForm] = useState({ name: '', phone: '', address: '', note: '' })
+  const [form, setForm] = useState({ 
+    name: user?.name || user?.full_name || '', 
+    email: user?.email || '', 
+    phone: user?.phone || '', 
+    address: '', 
+    note: '' 
+  })
   const [payment, setPayment] = useState('cod')
   const [errors, setErrors] = useState({})
   const [step, setStep] = useState('form')          // 'form' | 'success'
@@ -44,12 +50,24 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
 
+  useEffect(() => {
+    if (user) {
+      setForm(prev => ({
+        ...prev,
+        name: prev.name || user.name || user.full_name || '',
+        email: prev.email || user.email || '',
+        phone: prev.phone || user.phone || ''
+      }))
+    }
+  }, [user])
+
   const shipping = total >= 5000000 ? 0 : 150000
   const finalTotal = total + shipping
 
   const validate = () => {
     const e = {}
     if (!form.name.trim()) e.name = 'Vui lòng nhập họ tên'
+    if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Email không hợp lệ'
     if (!/^[0-9]{10,11}$/.test(form.phone)) e.phone = 'Số điện thoại không hợp lệ (10-11 số)'
     if (!form.address.trim()) e.address = 'Vui lòng nhập địa chỉ giao hàng'
     return e
@@ -207,6 +225,22 @@ export default function CheckoutPage() {
                     />
                   </div>
                   {errors.name && <span className="form-error">⚠ {errors.name}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Email *</label>
+                  <div className={styles.inputWithIcon}>
+                    <Mail size={16} className={styles.inputIcon} />
+                    <input
+                      type="email"
+                      placeholder="nguyenvana@example.com"
+                      value={form.email}
+                      onChange={e => { setForm({ ...form, email: e.target.value }); setErrors({ ...errors, email: '' }) }}
+                      className={`form-input ${errors.email ? 'error' : ''}`}
+                      style={{ paddingLeft: '40px' }}
+                    />
+                  </div>
+                  {errors.email && <span className="form-error">⚠ {errors.email}</span>}
                 </div>
 
                 <div className="form-group">

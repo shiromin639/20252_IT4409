@@ -86,6 +86,7 @@ async def read_products(
     min_price: float | None = None,
     max_price: float | None = None,
     sort_by: str | None = "newest",
+    ram: str | None = None,
     user_id: OptionalUserId = None
 ):
     # Construct cache key based on query params
@@ -97,7 +98,8 @@ async def read_products(
         "brand": brand,
         "min_price": min_price,
         "max_price": max_price,
-        "sort_by": sort_by
+        "sort_by": sort_by,
+        "ram": ram
     }
     query_hash = hashlib.md5(json.dumps(query_params, sort_keys=True).encode()).hexdigest()
     cache_key = f"products:list:{query_hash}"
@@ -150,6 +152,9 @@ async def read_products(
         query = query.where(Product.price >= min_price)
     if max_price is not None:
         query = query.where(Product.price <= max_price)
+    if ram:
+        # Extract "ram" key from specifications JSON and match
+        query = query.where(Product.specifications.op('->>')('ram') == ram)
         
     count_statement = select(func.count()).select_from(query.subquery())
     count = await session.exec(count_statement)

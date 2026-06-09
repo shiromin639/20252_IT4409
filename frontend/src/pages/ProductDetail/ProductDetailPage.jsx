@@ -63,7 +63,6 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     dispatch(addToCartAsync({ product, quantity }))
-    toast.success('Đã thêm vào giỏ hàng!')
   }
 
   const handleBuyNow = () => {
