@@ -33,7 +33,7 @@
 .logoText {
   font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--color-primary);
   letter-spacing: -0.02em;
 }

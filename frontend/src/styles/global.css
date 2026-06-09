@@ -28,8 +28,9 @@
   --color-text-inverse: #FFFFFF;
 
   /* Typography */
-  --font-display: 'Syne', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
+  --font-primary: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: var(--font-primary);
+  --font-body: var(--font-primary);
 
   /* Spacing */
   --space-1: 4px;
@@ -133,6 +134,41 @@ input, select, textarea {
 
 ul, ol {
   list-style: none;
+}
+
+/* ===== TYPOGRAPHY SCALE ===== */
+h1, .h1 {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h2, .h2 {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+h3, .h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.text-body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.text-small {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
 }
 
 /* ===== UTILITIES ===== */
