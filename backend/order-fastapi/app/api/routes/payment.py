@@ -116,13 +116,15 @@ def vnpay_return(request: Request, session: SessionDep, background_tasks: Backgr
         return RedirectResponse(url=f"{settings.FRONTEND_URL}/payment/vnpay/return?success=false&error=invalid_signature")
         
     response_code = input_data.get("vnp_ResponseCode", "")
+    transaction_status = input_data.get("vnp_TransactionStatus", "")
     order_id = input_data.get("vnp_TxnRef", "")
     
-    if response_code == "00":
+    if response_code == "00" and transaction_status == "00":
         # Usually IPN handles DB updates, but we can do it here for dev
         order = session.get(Order, int(order_id))
         if order and order.payment_status != "PAID":
             order.payment_status = "PAID"
+            order.status = "CONFIRMED"
             order.paid_at = datetime.now()
             order.payment_transaction_id = input_data.get("vnp_TransactionNo")
             session.add(order)
@@ -166,6 +168,7 @@ def vnpay_ipn(request: Request, session: SessionDep, background_tasks: Backgroun
         return {"RspCode": "97", "Message": "Invalid Checksum"}
         
     response_code = input_data.get("vnp_ResponseCode", "")
+    transaction_status = input_data.get("vnp_TransactionStatus", "")
     order_id = input_data.get("vnp_TxnRef", "")
     
     order = session.get(Order, int(order_id))
@@ -175,8 +178,9 @@ def vnpay_ipn(request: Request, session: SessionDep, background_tasks: Backgroun
     if order.payment_status == "PAID":
         return {"RspCode": "02", "Message": "Order already confirmed"}
         
-    if response_code == "00":
+    if response_code == "00" and transaction_status == "00":
         order.payment_status = "PAID"
+        order.status = "CONFIRMED"
         order.paid_at = datetime.now()
         order.payment_transaction_id = input_data.get("vnp_TransactionNo")
         session.add(order)

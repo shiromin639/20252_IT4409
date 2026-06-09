@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # VNPay Sandbox Configuration
     VNPAY_TMN_CODE: str
     VNPAY_HASH_SECRET: str
-    VNPAY_RETURN_URL: str = "https://techlap.id.vn/payment/vnpay/return"
+    VNPAY_RETURN_URL: str = "https://api.techlap.id.vn/v1/payments/vnpay/return"
     VNPAY_PAYMENT_URL: str = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
 
     # SMTP Configuration

@@ -64,7 +64,7 @@ async def get_cart_items(session: SessionDep, user_id: str):
     statement = select(Cart).where(Cart.user_id == user_id)
     cart = session.exec(statement).first()
     if not cart:
-        raise HTTPException(status_code=404, detail="Cart not found")
+        return []
 
     statement = select(CartItem).where(CartItem.cart_id == cart.id)
     items = session.exec(statement).all()
