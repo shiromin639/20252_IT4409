@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
-import { productApi, adminApi } from '../../services/api';
+import { productApi, adminApi, inventoryApi } from '../../services/api';
 import toast from 'react-hot-toast';
 import { Image } from '../../components/common';
 import styles from './Admin.module.css';
@@ -13,8 +13,11 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
     description: '',
     price: '',
     category_id: 1, // Default category
-    specifications: { brand: '' }
+    specifications: { brand: '' },
+    stock_quantity: 0
   });
+  
+  const [initialStock, setInitialStock] = useState(0);
   
   const [categories, setCategories] = useState([]);
   const [imageFile, setImageFile] = useState(null);
@@ -29,14 +32,28 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
       if (initialData) {
         setForm({
           ...initialData,
-          specifications: initialData.specifications || { brand: '' }
+          specifications: initialData.specifications || { brand: initialData.brand || '' },
+          stock_quantity: 0 // Will update below
         });
         setImagePreview(initialData.image_url || initialData.image || '');
+        
+        // Fetch current stock
+        inventoryApi.getStock(initialData.id)
+          .then(res => {
+            const qty = res.quantity || 0;
+            setForm(prev => ({...prev, stock_quantity: qty}));
+            setInitialStock(qty);
+          })
+          .catch(err => {
+            console.error("Failed to load stock", err);
+            setInitialStock(0);
+          });
       } else {
         setForm({
-          name: '', slug: '', sku: '', description: '', price: '', category_id: 1, specifications: { brand: '' }
+          name: '', slug: '', sku: '', description: '', price: '', category_id: 1, specifications: { brand: '' }, stock_quantity: 0
         });
         setImagePreview('');
+        setInitialStock(0);
       }
       setImageFile(null);
     }
@@ -68,15 +85,32 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
       
       const payload = {
         ...form,
+        brand: form.specifications.brand, // Fix for Brand Displays as Unknown
         image_url: finalImageUrl,
         price: parseFloat(form.price)
       };
       
       if (initialData) {
         await adminApi.updateProduct(initialData.id, payload);
+        
+        // Update inventory if changed
+        const newStock = parseInt(form.stock_quantity) || 0;
+        const delta = newStock - initialStock;
+        if (delta !== 0) {
+          await inventoryApi.updateStock(initialData.id, delta);
+        }
+        
         toast.success('Sửa sản phẩm thành công');
       } else {
-        await adminApi.createProduct(payload);
+        const createdProduct = await adminApi.createProduct(payload);
+        
+        // Create initial inventory
+        await inventoryApi.createInventory({
+          product_id: createdProduct.id || createdProduct.data?.id,
+          quantity: parseInt(form.stock_quantity) || 0,
+          reserved_quantity: 0
+        });
+        
         toast.success('Thêm sản phẩm thành công');
       }
       
@@ -152,6 +186,18 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
                 className="form-input" 
                 value={form.specifications.brand} 
                 onChange={e => setForm({...form, specifications: {...form.specifications, brand: e.target.value}})} 
+              />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">Số lượng tồn kho (Stock Quantity) *</label>
+              <input 
+                required
+                type="number" 
+                min="0"
+                className="form-input" 
+                value={form.stock_quantity} 
+                onChange={e => setForm({...form, stock_quantity: e.target.value})} 
               />
             </div>
             
