@@ -53,7 +53,7 @@ async def get_daily_revenue(session: SessionDep) -> List[Dict[str, Any]]:
     def _fetch():
         # Get revenue by day for the last 7 days
         # SQLite/PostgreSQL date grouping via func.date
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        seven_days_ago = datetime.utcnow() - timedelta(days=6)
         
         # Group by date part of created_at
         statement = (
@@ -68,11 +68,17 @@ async def get_daily_revenue(session: SessionDep) -> List[Dict[str, Any]]:
         )
         
         results = session.exec(statement).all()
+        revenue_map = {str(row.date): float(row.revenue) for row in results}
         
-        return [
-            {"date": str(row.date), "revenue": float(row.revenue)}
-            for row in results
-        ]
+        revenue_last_7_days = []
+        for i in range(6, -1, -1):
+            target_date = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+            revenue_last_7_days.append({
+                "date": target_date,
+                "revenue": revenue_map.get(target_date, 0.0)
+            })
+            
+        return revenue_last_7_days
         
     data = await run_in_threadpool(_fetch)
     await set_cache(cache_key, data, 300)
@@ -185,7 +191,7 @@ async def get_dashboard(session: SessionDep) -> Dict[str, Any]:
         product_map = {p["id"]: p for p in products_response.get("data", [])}
         
         # 4. Revenue last 7 days
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        seven_days_ago = datetime.utcnow() - timedelta(days=6)
         daily_rev_statement = (
             select(
                 func.date(Order.created_at).label("date"),
@@ -197,7 +203,15 @@ async def get_dashboard(session: SessionDep) -> Dict[str, Any]:
             .order_by(func.date(Order.created_at).asc())
         )
         daily_results = session.exec(daily_rev_statement).all()
-        revenue_last_7_days = [{"date": str(row.date), "revenue": float(row.revenue)} for row in daily_results]
+        revenue_map = {str(row.date): float(row.revenue) for row in daily_results}
+        
+        revenue_last_7_days = []
+        for i in range(6, -1, -1):
+            target_date = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+            revenue_last_7_days.append({
+                "date": target_date,
+                "revenue": revenue_map.get(target_date, 0.0)
+            })
 
         # 5. Recent orders
         recent_statement = select(Order).order_by(Order.created_at.desc()).limit(5)

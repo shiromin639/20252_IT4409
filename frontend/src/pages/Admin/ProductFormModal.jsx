@@ -24,7 +24,7 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
 
   useEffect(() => {
     if (isOpen) {
-      productApi.getCategories().then(res => setCategories(res.data)).catch(console.error);
+      productApi.getCategories().then(res => setCategories(res || [])).catch(console.error);
       
       if (initialData) {
         setForm({
@@ -73,7 +73,7 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
       };
       
       if (initialData) {
-        // await adminApi.updateProduct(initialData.id, payload);
+        await adminApi.updateProduct(initialData.id, payload);
         toast.success('Sửa sản phẩm thành công');
       } else {
         await adminApi.createProduct(payload);
@@ -162,7 +162,7 @@ export default function ProductFormModal({ isOpen, onClose, onSuccess, initialDa
                 value={form.category_id} 
                 onChange={e => setForm({...form, category_id: parseInt(e.target.value)})}
               >
-                {categories.map(c => (
+                {(Array.isArray(categories) ? categories : categories?.data || []).map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
